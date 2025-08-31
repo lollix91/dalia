@@ -1,0 +1,2 @@
+nicegui==2.23.3
+GitPython==3.1.45
