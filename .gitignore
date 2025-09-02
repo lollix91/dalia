@@ -209,3 +209,5 @@ __marimo__/
 **/*.zip
 **/sicstus
 **/.vscode 
+**/wrk
+**/server.txt

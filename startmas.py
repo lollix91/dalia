@@ -1,5 +1,5 @@
 import os 
-import git
+import re
 import time
 import json
 import logging
@@ -9,17 +9,14 @@ import threading
 import subprocess
 logging.basicConfig(level=logging.INFO)
 
+def has_port(text: str, port: int) -> bool:
+    pattern = rf"(?<!\d):?{port}\b"
+    return re.search(pattern, text) is not None
+
 def port_busy(port):
     result = subprocess.run(['netstat', '-an'], capture_output=True, text=True)
     logging.info(result.stdout)
-    return f"{port}" in result.stdout
-
-def check_sicstus(root):
-    sicstus = ""
-    path    = os.path.join(root, 'files', 'sicstus', 'bin', 'sicstus')
-    if os.path.isfile(path) and os.access(path, os.X_OK):
-        sicstus = path
-    return sicstus
+    return has_port(result.stdout, port)
 
 def load_src(root):
     result      = {
