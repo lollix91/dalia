@@ -4,8 +4,9 @@ from nicegui import ui
 
 
 class InteractiveShell(ui.element):
-    def __init__(self, *, appname, _client = None):
+    def __init__(self, *, appname, title, _client = None):
         super().__init__('div', _client=_client)
+        self.classes("p-10 font-mono bg-black").props("dark")
         with self:
             self.process = subprocess.Popen(
                 [appname],
@@ -15,12 +16,13 @@ class InteractiveShell(ui.element):
                 text=True,
                 bufsize=1
             )
+            ui.label(title).classes("text-negative")
             self.output = ui.log(max_lines=1000).classes(
-                "bg-black text-green-500 p-2 font-mono h-[500px] overflow-auto"
+                "text-green-500 overflow-auto"
             )
-            ui.input("?-").on('keydown.enter', self.on_enter).classes(
-                "w-full bg-gray-900"
-            ).props('input-style="color: white" input-class="font-mono"')
+            ui.input("?-", placeholder='start typing').on('keydown.enter', self.on_enter).classes(
+                "rounded outlined dense"
+            ).props('input-style="color: #87CEEB" input-class="font-mono"')
             asyncio.create_task(self.read_stdout())
     async def on_enter(self, e):
         cmd = e.sender.value
@@ -41,6 +43,6 @@ class InteractiveShell(ui.element):
 @ui.page("/")
 async def index():
 
-    InteractiveShell(appname='swipl')
+    InteractiveShell(appname='swipl', title="Agent1")
 
 ui.run(title="Prolog Terminal")

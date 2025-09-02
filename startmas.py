@@ -107,7 +107,6 @@ def build(*, root, sicstuspath, dalipath):
         with open(os.path.join(setupsdir, f'{name}.txt'), 'w') as f:
             f.write(setup)
         os.chmod(os.path.join(setupsdir, f'{name}.txt'), 0o755)
-        # /opt/sicstus/bin/sicstus --noinfo -l ../../src/active_dali_wi.pl --goal "start0('/home/aly/study/DALI/Examples/advanced/conf/mas/agent1.txt')."
         cmd = " ".join([sicstus, '--noinfo', '-l', os.path.join(dalipath, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
         logging.info(f"cmd: {cmd}")
         threading.Thread(target=shell, args=(cmd,), daemon=True).start()
