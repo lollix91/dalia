@@ -1,0 +1,1 @@
+send_message(inform(told(agent1,fdvar_1),motivation(refused_message),agent1))

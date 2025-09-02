@@ -3,6 +3,7 @@ import re
 import uuid
 import time
 import json
+import shlex
 import logging
 import asyncio
 import argparse
@@ -78,6 +79,9 @@ def build(*, root, sicstuspath, dalipath):
     agentsdir = os.path.join(wrk, 'agents')
     setupsdir = os.path.join(wrk, 'setups')
     confdir  = os.path.join(wrk, 'conf')
+    logdir = os.path.join(root, 'log')
+    rmdir(logdir)
+    os.makedirs(logdir, exist_ok=True)
     os.makedirs(setupsdir, exist_ok=True)
     os.makedirs(agentsdir, exist_ok=True)
     os.makedirs(confdir, exist_ok=True)
@@ -89,7 +93,7 @@ def build(*, root, sicstuspath, dalipath):
         time.sleep(1)
     time.sleep(5)
     cmds  = [
-        [sicstus, '--noinfo', '-l', os.path.join(dalipath, 'active_server_wi.pl'), '--goal', 'go.']
+        f"{sicstus} --noinfo -l {os.path.join(dalipath, 'active_server_wi.pl')} --goal go."
     ]
     for name in src["agents"]:
         with open(os.path.join(agentsdir, f'{name}.txt'), 'w') as f:
@@ -100,26 +104,26 @@ def build(*, root, sicstuspath, dalipath):
             f.write(setup)
         os.chmod(os.path.join(setupsdir, f'{name}.txt'), 0o755)
         cmds += [
-            [sicstus, '--noinfo', '-l', os.path.join(dalipath, 'active_dali_wi.pl'), '--goal', f'start0(\'{os.path.join(setupsdir, f'{name}.txt')}\').']
+            " ".join([sicstus, '--noinfo', '-l', os.path.join(dalipath, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
         ]
     cmds += [
-        [sicstus, '--noinfo', '-l', os.path.join(dalipath, 'active_user_wi.pl'), '--goal', 'user_interface.']
+        f"{sicstus} --noinfo -l {os.path.join(dalipath, 'active_user_wi.pl')} --goal user_interface."
     ]
     return cmds
 
 
 class InteractiveShell(ui.element):
-    def __init__(self, *, cmd: list, title: str, _client = None):
+    def __init__(self, *, cmd: str, title: str, _client = None):
         super().__init__('div', _client=_client)
         self.classes("p-10 font-mono bg-black").props("dark")
         with self:
             self.process = subprocess.Popen(
-                cmd,
+                shlex.split(cmd),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                bufsize=1
+                bufsize=1,
             )
             ui.label(title).classes("text-negative")
             self.output = ui.log(max_lines=1000).classes(
@@ -141,7 +145,8 @@ class InteractiveShell(ui.element):
         while True:
             line = await loop.run_in_executor(None, self.process.stdout.readline)
             if not line:
-                break
+                await asyncio.sleep(.1)
+                continue
             self.output.push(line.rstrip())
             await asyncio.sleep(.1)
 
