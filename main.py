@@ -1,5 +1,7 @@
 import os 
 import re
+import pty
+import PIL
 import uuid
 import time
 import json
@@ -10,7 +12,14 @@ import argparse
 import threading
 import subprocess
 from nicegui import ui
-logging.basicConfig(level=logging.INFO)
+from robohash import Robohash
+
+
+class AnsiStrip:
+    def __init__(self):
+        self.ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+    def __call__(self, text: str) -> str:
+        return self.ansi_escape.sub('', text)
 
 def has_port(text: str, port: int) -> bool:
     pattern = rf"(?<!\d):?{port}\b"
@@ -92,9 +101,9 @@ def build(*, root, sicstuspath, dalipath):
     while port_busy(port):
         time.sleep(1)
     time.sleep(5)
-    cmds  = [
-        f"{sicstus} --noinfo -l {os.path.join(dalipath, 'active_server_wi.pl')} --goal go."
-    ]
+    cmds  = {
+        "server": f"{sicstus} --noinfo -l {os.path.join(dalipath, 'active_server_wi.pl')} --goal go."
+    }
     for name in src["agents"]:
         with open(os.path.join(agentsdir, f'{name}.txt'), 'w') as f:
             f.write(src['agents'][name]["code"])
@@ -103,12 +112,9 @@ def build(*, root, sicstuspath, dalipath):
         with open(os.path.join(setupsdir, f'{name}.txt'), 'w') as f:
             f.write(setup)
         os.chmod(os.path.join(setupsdir, f'{name}.txt'), 0o755)
-        cmds += [
-            " ".join([sicstus, '--noinfo', '-l', os.path.join(dalipath, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
-        ]
-    cmds += [
-        f"{sicstus} --noinfo -l {os.path.join(dalipath, 'active_user_wi.pl')} --goal user_interface."
-    ]
+        cmds[f"agent_{len(cmds)}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dalipath, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
+            
+    cmds["user"] = f"{sicstus} --noinfo -l {os.path.join(dalipath, 'active_user_wi.pl')} --goal user_interface."
     return cmds
 
 
@@ -117,38 +123,54 @@ class InteractiveShell(ui.element):
         super().__init__('div', _client=_client)
         self.classes("p-10 font-mono bg-black").props("dark")
         with self:
+            self.strip_ansi = AnsiStrip()
+            self.master_fd, self.slave_fd = pty.openpty()
             self.process = subprocess.Popen(
                 shlex.split(cmd),
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdin=self.slave_fd,
+                stdout=self.slave_fd,
+                stderr=self.slave_fd,
                 text=True,
-                bufsize=1,
+                bufsize=0,
             )
-            ui.label(title).classes("text-negative")
+            os.close(self.slave_fd)
+            rh = Robohash(title)
+            if title == 'user':
+                roboset='set5'
+            elif 'agent' in title:
+                roboset='set3'
+            else:
+                roboset='set4'
+            rh.assemble(roboset=roboset)
+            with ui.row():
+                with ui.avatar():
+                    ui.image(rh.img)
+                ui.label(title).classes("text-negative")
             self.output = ui.log(max_lines=1000).classes(
                 "text-green-500 overflow-auto"
             )
             ui.input("?-", placeholder='start typing').on('keydown.enter', self.on_enter).classes(
                 "rounded outlined dense"
             ).props('input-style="color: #87CEEB" input-class="font-mono"')
-            asyncio.create_task(self.read_stdout())
+            threading.Thread(target=self.read_output, daemon=True).start()
     async def on_enter(self, e):
         cmd = e.sender.value
         e.sender.value = ""
-        self.output.push(f"?- {cmd}")
-        if self.process.stdin:
-            self.process.stdin.write(cmd + "\n")
-            self.process.stdin.flush()
-    async def read_stdout(self):
-        loop = asyncio.get_running_loop()
+        if self.process.poll() is not None:
+            self.output.push("[process exited]")
+            return
+        os.write(self.master_fd, (cmd + "\n").encode())
+    def read_output(self):
+        """Continuously read from the PTY master and push to UI"""
         while True:
-            line = await loop.run_in_executor(None, self.process.stdout.readline)
-            if not line:
-                await asyncio.sleep(.1)
-                continue
-            self.output.push(line.rstrip())
-            await asyncio.sleep(.1)
+            try:
+                data = os.read(self.master_fd, 1024).decode(errors='ignore')
+                if data:
+                    self.output.push(self.strip_ansi(data))
+                else:
+                    break
+            except OSError:
+                break
 
 
 @ui.page("/")
@@ -182,12 +204,11 @@ async def index():
             with ui.menu() as menu:
                 ui.menu_item(f"Authors")
     cmds = build(root=root, sicstuspath=os.path.abspath(args.sicstuspath), dalipath=os.path.abspath(args.dalipath))
-    
     with ui.card().classes("w-full flex justify-center items-center").props('dark'):
         with ui.grid(columns=2).classes('w-full').props('dark'):
-            for idx, cmd in enumerate(cmds):
+            for title, cmd in cmds.items():
                 logging.info(cmd)
-                InteractiveShell(cmd=cmd, title=f"agent_{idx}")
+                InteractiveShell(cmd=cmd, title=title)
                 await asyncio.sleep(5)
 
     
