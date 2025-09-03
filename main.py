@@ -35,15 +35,15 @@ def load_src(dirpath):
         "agents": dict(),
         "comm": ""
     }
-    mappingpath = os.path.join(dirpath, 'mapping.json')
+    instancespath = os.path.join(dirpath, 'instances.json')
     try:
-        with open(mappingpath, 'r') as f:
-            mapping = json.loads(f.read())
+        with open(instancespath, 'r') as f:
+            instances = json.loads(f.read())
     except Exception as e:
-        logging.exception(f"{mappingpath} does not exist")
+        logging.exception(f"{instancespath} does not exist")
         return {} 
     try:
-        for name, type in mapping.items():
+        for name, type in instances.items():
             path = os.path.join(dirpath, 'types', f'{type}.txt') 
             assert os.path.isfile(path)
             with open(path, 'r') as f:
@@ -53,7 +53,7 @@ def load_src(dirpath):
                 "code": code
             }
     except Exception as e:
-        logging.exception(f"problem with mappings in {mappingpath}")
+        logging.exception(f"problem with instancess in {instancespath}")
         return {} 
     commpath = os.path.join(dirpath, 'conf', f'communication.con')
     try:
