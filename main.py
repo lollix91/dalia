@@ -1,7 +1,6 @@
 import os 
 import re
 import pty
-import PIL
 import uuid
 import time
 import json
@@ -114,7 +113,6 @@ def build(*, src, sicstus, dali):
             f.write(setup)
         os.chmod(os.path.join(setupsdir, f'{name}.txt'), 0o755)
         cmds[f"agent_{len(cmds)}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dali, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
-            
     cmds["user"] = f"{sicstus} --noinfo -l {os.path.join(dali, 'active_user_wi.pl')} --goal user_interface."
     return cmds
 
@@ -162,7 +160,6 @@ class InteractiveShell(ui.element):
             return
         os.write(self.master_fd, (cmd + "\n").encode())
     def read_output(self):
-        """Continuously read from the PTY master and push to UI"""
         while True:
             try:
                 data = os.read(self.master_fd, 1024).decode(errors='ignore')
@@ -239,8 +236,6 @@ async def index():
         ui.label("DALIA").style('color: #FFFFFF; font-size: 200%; font-weight: 900')
         info = Info()
         ui.icon('info', size='lg').on('click', info)
-            
-    
     with ui.card().classes("w-full flex justify-center items-center overflow-auto").props('dark'):
         Main()
     with ui.footer(elevated=True).classes("justify-center items-center"):
@@ -249,9 +244,9 @@ async def index():
     
 if __name__ in {"__main__", "__mp_main__"}:
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--src', type=str, required=True, help="path to the MAS source code (like the example folder)")
-    argparser.add_argument('--dali', type=str, required=True, help="path to the dali directory")
-    argparser.add_argument('--sicstus', type=str, required=True, help="path to the sicstus directory")
+    argparser.add_argument('--src', type=str,       required=not os.environ.get('docker', False), default='/src', help="path to the MAS source code (like the example folder)")
+    argparser.add_argument('--dali', type=str,      required=not os.environ.get('docker', False), default='/dali', help="path to the dali directory")
+    argparser.add_argument('--sicstus', type=str,   required=not os.environ.get('docker', False), default='/sicstus', help="path to the sicstus directory")
     args      = argparser.parse_args()
     logging.basicConfig(
         level=logging.INFO,
@@ -264,6 +259,6 @@ if __name__ in {"__main__", "__mp_main__"}:
         favicon=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'),
         storage_secret=uuid.uuid4().hex,
         host="0.0.0.0", 
-        port=8080,
+        port=8118,
         reconnect_timeout=300
     )

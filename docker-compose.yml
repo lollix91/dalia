@@ -1,31 +1,27 @@
 services:
-  # robohash:v2.0
-  robohash:
-    image: ghcr.io/e1ven/robohash:v2.0
-    container_name: robohash
-    restart: always
-    networks:
-      - DALIA
-    ports:
-      - "8081:8080"
   # python:3.13
   python:
     pull_policy: missing
     image: python:3.13
+  # dalia
   dalia:
     depends_on:
       - python
     pull_policy: never
     ports:
-      - "8002:8080"
+      - "8118:8118"
     restart: always
     container_name: dalia
     image: dalia
     build: 
-      context: app
+      context: .
       dockerfile: dockerfile
+    environment:
+      - docker=true
     volumes:
-      - ./files:/dalia/files
+      - ${sicstus}:/sicstus
+      - ${src}:/src
+      - ${dali}:/dali
     networks:
       - DALIA
 networks:
