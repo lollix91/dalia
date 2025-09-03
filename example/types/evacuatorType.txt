@@ -1,0 +1,5 @@
+start_evacuationE(X) :> guide_people_to_exitA(X), reportA(evacuation_done).
+
+guide_people_to_exitA(X) :> write('Guiding people to '), write(X), nl.
+
+reportA(X) :> messageA(coordinator, send_message(X, Me)).

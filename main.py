@@ -46,6 +46,7 @@ def load_src(dirpath):
         for name, type in instances.items():
             path = os.path.join(dirpath, 'types', f'{type}.txt') 
             assert os.path.isfile(path)
+            assert name not in ['user', 'server']
             with open(path, 'r') as f:
                 code = f.read().strip()
             result["agents"][name] = {
@@ -112,7 +113,7 @@ def build(*, src, sicstus, dali):
         with open(os.path.join(setupsdir, f'{name}.txt'), 'w') as f:
             f.write(setup)
         os.chmod(os.path.join(setupsdir, f'{name}.txt'), 0o755)
-        cmds[f"agent_{len(cmds)}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dali, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
+        cmds[f"{name}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dali, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
     cmds["user"] = f"{sicstus} --noinfo -l {os.path.join(dali, 'active_user_wi.pl')} --goal user_interface."
     return cmds
 
@@ -122,6 +123,7 @@ class InteractiveShell(ui.element):
         super().__init__('div', _client=_client)
         self.classes("p-4 font-mono bg-black").props("dark")
         with self:
+            self.title = title
             self.strip_ansi = AnsiStrip()
             self.master_fd, self.slave_fd = pty.openpty()
             self.process = subprocess.Popen(
@@ -166,9 +168,13 @@ class InteractiveShell(ui.element):
                 if data:
                     self.output.push(self.strip_ansi(data))
                 else:
+                    msg = f"OSError in {self.title}"
                     break
             except OSError:
+                msg = f"{self.master_fd} unreadable in {self.title}"
                 break
+        logging.exception(msg)
+        self.output.push(self.strip_ansi(msg))
 
 class Info(ui.dialog):
     def __init__(self):
@@ -203,6 +209,14 @@ class Main(ui.row):
             self.remove(waiting)
         with self.grid:
             if cmds is not None:
+                server = cmds.pop('server')
+                logging.info(server)
+                InteractiveShell(cmd=server, title='server')
+                await asyncio.sleep(5)
+                user = cmds.pop('user')
+                logging.info(user)
+                InteractiveShell(cmd=user, title='user')
+                await asyncio.sleep(5)
                 for title, cmd in cmds.items():
                     logging.info(cmd)
                     InteractiveShell(cmd=cmd, title=title)

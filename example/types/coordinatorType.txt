@@ -1,0 +1,11 @@
+alarmE(smoke) :> start_evacuationA(exit_north), logA(alarm(smoke)).
+alarmE(gas) :> start_evacuationA(exit_south), logA(alarm(gas)).
+alarmE(earthquake) :> start_evacuationA(exit_west), logA(alarm(earthquake)).
+
+start_evacuationA(X) :> messageA(evacuator, send_message(start_evacuation(X), Me)).
+
+evacuation_doneE :> logA(evacuation_completed).
+
+logA(X) :> messageA(logger, send_message(log(X), Me)).
+
+goE:> write('received'), nl.

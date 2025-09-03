@@ -1,4 +1,6 @@
 {
-    "agent1": "agentType1",
-    "agent2": "agentType2"
+    "sensor": "sensorType",
+    "logger": "loggerType",
+    "evacuator": "evacuatorType",
+    "coordinator": "coordinatorType"
 }
