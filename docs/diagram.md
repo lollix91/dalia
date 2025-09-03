@@ -14,9 +14,13 @@ sequenceDiagram
     Note over C: Evaluates severity
     C->>E: request_equipment(emergency_type)
     C->>T: go(location)
+    T->>C: arrived(location)
     C->>T: transport(location, away, bystanders, personal_items)
+    T->>C: done(transport)
     C->>T: go(base)
+    T->>C: arrived(base)
     C->>T: transport(base, location, firefighters, equipment)
+    T->>C: done(transport)
     C->>F: use(equipment, emergency_type)
     
     Note over E: Dispenses equipment based on emergency type
