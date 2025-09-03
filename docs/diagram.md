@@ -19,19 +19,19 @@ sequenceDiagram
     T->>C: done(transport)
     C->>T: go(base)
     T->>C: arrived(base)
+    E->>C: sends(equipment)
     C->>T: transport(base, location, firefighters, equipment)
     T->>C: done(transport)
     C->>F: use(equipment, emergency_type)
     
     Note over E: Dispenses equipment based on emergency type
-    E->>C: sends(equipment)
     E->>L: log_event(equipment_choice)
     
     Note over T: Transports people and equipment
     T->>L: log_event(from_to_who_what)
     
     Note over F: uses the equipment to resolve the emergency type
-    T->>L: log_event(equipment_vs_emergency)
+    F->>L: log_event(equipment_vs_emergency)
     
     Note over L: Records all events
 ``` 
