@@ -1,3 +1,4 @@
+t60.
 alarmE(X) :> write('ALARM: '), write(X), nl.
 start_evacuationE(X) :> write('START evacuation towards '), write(X), nl.
 evacuation_doneE :> write('Evacuation completed'), nl.

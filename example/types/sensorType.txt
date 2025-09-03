@@ -1,6 +1,15 @@
+t60.
+
+:- dynamic state/1.
+:- assert(state(0)).
+
 detect_smokeE :> alarmA(smoke).
 detect_gasE :> alarmA(gas).
-detect_earthquakeE :> alarmA(earthquake).
+detect_earthquakeE :> retract(state(_)), assert(state(1)), alarmA(earthquake).
+
+iamawake(X) :- state(X), X==1.
+
+iamawakeI(X) :> write('I am Awake'), state(X), write(X), nl.
 
 alarmA(X) :> messageA(coordinator, send_message(alarm(X), Me)).
 

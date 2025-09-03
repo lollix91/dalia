@@ -1,3 +1,4 @@
+t60.
 alarmE(smoke) :> start_evacuationA(exit_north), logA(alarm(smoke)).
 alarmE(gas) :> start_evacuationA(exit_south), logA(alarm(gas)).
 alarmE(earthquake) :> start_evacuationA(exit_west), logA(alarm(earthquake)).
