@@ -8,11 +8,12 @@ import json
 import shlex
 import logging
 import asyncio
+import tempfile
 import argparse
 import threading
 import subprocess
-from nicegui import ui
 from robohash import Robohash
+from nicegui import ui, background_tasks, run
 
 
 class AnsiStrip:
@@ -27,15 +28,15 @@ def has_port(text: str, port: int) -> bool:
 
 def port_busy(port):
     result = subprocess.run(['netstat', '-an'], capture_output=True, text=True)
-    logging.info(result.stdout)
+    logging.info(f"scanning for port {port}")
     return has_port(result.stdout, port)
 
-def load_src(root):
+def load_src(dirpath):
     result      = {
         "agents": dict(),
         "comm": ""
     }
-    mappingpath = os.path.join(root, 'src', 'mapping.json')
+    mappingpath = os.path.join(dirpath, 'mapping.json')
     try:
         with open(mappingpath, 'r') as f:
             mapping = json.loads(f.read())
@@ -44,7 +45,7 @@ def load_src(root):
         return {} 
     try:
         for name, type in mapping.items():
-            path = os.path.join(root, 'src', 'types', f'{type}.txt') 
+            path = os.path.join(dirpath, 'types', f'{type}.txt') 
             assert os.path.isfile(path)
             with open(path, 'r') as f:
                 code = f.read().strip()
@@ -55,7 +56,7 @@ def load_src(root):
     except Exception as e:
         logging.exception(f"problem with mappings in {mappingpath}")
         return {} 
-    commpath = os.path.join(root, 'src', 'conf', f'communication.con')
+    commpath = os.path.join(dirpath, 'conf', f'communication.con')
     try:
         assert os.path.isfile(commpath)
         with open(commpath, 'r') as f:
@@ -75,20 +76,20 @@ def rmdir(path):
                 os.rmdir(os.path.join(root, dir))
         os.rmdir(path)
 
-def build(*, root, sicstuspath, dalipath):
-    src = load_src(root)
+def build(*, src, sicstus, dali):
+    src = load_src(src)
     if not src:
         return
+    workdir = tempfile.mkdtemp()
     p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
     p.wait()
-    dalipath = os.path.join(dalipath, 'src')
-    sicstus  = os.path.join(sicstuspath, 'bin', 'sicstus')
-    wrk = os.path.join(root, 'wrk')
-    rmdir(wrk)
-    agentsdir = os.path.join(wrk, 'agents')
-    setupsdir = os.path.join(wrk, 'setups')
-    confdir  = os.path.join(wrk, 'conf')
-    logdir = os.path.join(root, 'log')
+    dali     = os.path.join(dali, 'src')
+    sicstus  = os.path.join(sicstus, 'bin', 'sicstus')
+    rmdir(workdir)
+    agentsdir = os.path.join(workdir, 'agents')
+    setupsdir = os.path.join(workdir, 'setups')
+    confdir   = os.path.join(workdir, 'conf')
+    logdir    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log')
     rmdir(logdir)
     os.makedirs(logdir, exist_ok=True)
     os.makedirs(setupsdir, exist_ok=True)
@@ -102,26 +103,26 @@ def build(*, root, sicstuspath, dalipath):
         time.sleep(1)
     time.sleep(5)
     cmds  = {
-        "server": f"{sicstus} --noinfo -l {os.path.join(dalipath, 'active_server_wi.pl')} --goal go."
+        "server": f"{sicstus} --noinfo -l {os.path.join(dali, 'active_server_wi.pl')} --goal go."
     }
     for name in src["agents"]:
         with open(os.path.join(agentsdir, f'{name}.txt'), 'w') as f:
             f.write(src['agents'][name]["code"])
         os.chmod(os.path.join(agentsdir, f'{name}.txt'), 0o755)
-        setup = f"agent('{agentsdir}/{name}', '{name}','no',italian,['{confdir}/communication'],['{dalipath}/communication_fipa','{dalipath}/learning','{dalipath}/planasp'],'no','{dalipath}/onto/dali_onto.txt',[])."
+        setup = f"agent('{agentsdir}/{name}', '{name}','no',italian,['{confdir}/communication'],['{dali}/communication_fipa','{dali}/learning','{dali}/planasp'],'no','{dali}/onto/dali_onto.txt',[])."
         with open(os.path.join(setupsdir, f'{name}.txt'), 'w') as f:
             f.write(setup)
         os.chmod(os.path.join(setupsdir, f'{name}.txt'), 0o755)
-        cmds[f"agent_{len(cmds)}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dalipath, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
+        cmds[f"agent_{len(cmds)}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dali, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
             
-    cmds["user"] = f"{sicstus} --noinfo -l {os.path.join(dalipath, 'active_user_wi.pl')} --goal user_interface."
+    cmds["user"] = f"{sicstus} --noinfo -l {os.path.join(dali, 'active_user_wi.pl')} --goal user_interface."
     return cmds
 
 
 class InteractiveShell(ui.element):
     def __init__(self, *, cmd: str, title: str, _client = None):
         super().__init__('div', _client=_client)
-        self.classes("p-10 font-mono bg-black").props("dark")
+        self.classes("p-4 font-mono bg-black").props("dark")
         with self:
             self.strip_ansi = AnsiStrip()
             self.master_fd, self.slave_fd = pty.openpty()
@@ -138,11 +139,11 @@ class InteractiveShell(ui.element):
             if title == 'user':
                 roboset='set5'
             elif 'agent' in title:
-                roboset='set3'
+                roboset='set1'
             else:
-                roboset='set4'
+                roboset='set2'
             rh.assemble(roboset=roboset)
-            with ui.row():
+            with ui.row(align_items='center'):
                 with ui.avatar():
                     ui.image(rh.img)
                 ui.label(title).classes("text-negative")
@@ -172,10 +173,28 @@ class InteractiveShell(ui.element):
             except OSError:
                 break
 
+class Main(ui.row):
+    def __init__(self):
+        super().__init__()
+        self.classes('w-full justify-center items-center').props('dark')
+        with self:
+            self.grid = ui.grid(columns=2).classes('w-full justify-center items-center').props('dark')
+        background_tasks.create(self())
+    async def __call__(self):
+        with self:
+            with ui.column().classes('w-full justify-center items-center').props('dark') as waiting:
+                ui.label(f"Building: {os.path.abspath(args.src)}")
+                ui.spinner(type='bars', color='positive')
+            cmds = await run.cpu_bound(build, src=os.path.abspath(args.src), sicstus=os.path.abspath(args.sicstus), dali=os.path.abspath(args.dali))
+            self.remove(waiting)
+        with self.grid:
+            for title, cmd in cmds.items():
+                logging.info(cmd)
+                InteractiveShell(cmd=cmd, title=title)
+                await asyncio.sleep(5)
 
 @ui.page("/")
 async def index():
-    root = os.path.dirname(os.path.abspath(__file__))
     ui.colors(primary='#000')
     ui.add_css(r'''
                 a:link, a:visited {color: inherit !important; text-decoration: none; font-weight: 500}
@@ -198,34 +217,33 @@ async def index():
     ui.query('.nicegui-content').classes('w-full')
     with ui.header(elevated=True).classes("justify-between items-center"):
         with ui.avatar():
-            ui.image(os.path.join(root, 'files', 'assets', 'DALI_logo.png'))
+            ui.image(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'))
         ui.label("DALIA").style('color: #FFFFFF; font-size: 200%; font-weight: 900')
         with ui.button(icon='menu'):
             with ui.menu() as menu:
                 ui.menu_item(f"Authors")
-    cmds = build(root=root, sicstuspath=os.path.abspath(args.sicstuspath), dalipath=os.path.abspath(args.dalipath))
-    with ui.card().classes("w-full flex justify-center items-center").props('dark'):
-        with ui.grid(columns=2).classes('w-full').props('dark'):
-            for title, cmd in cmds.items():
-                logging.info(cmd)
-                InteractiveShell(cmd=cmd, title=title)
-                await asyncio.sleep(5)
+    
+    with ui.card().classes("w-full flex justify-center items-center overflow-auto").props('dark'):
+        Main()
+    with ui.footer(elevated=True).classes("justify-center items-center"):
+        ui.label("Copyrights 2025 Ⓒ Aly Shmahell")
 
     
 if __name__ in {"__main__", "__mp_main__"}:
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--dalipath', type=str, required=True)
-    argparser.add_argument('--sicstuspath', type=str, required=True)
+    argparser.add_argument('--src', type=str, required=True)
+    argparser.add_argument('--dali', type=str, required=True)
+    argparser.add_argument('--sicstus', type=str, required=True)
     args      = argparser.parse_args()
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         handlers=[
             logging.StreamHandler()
         ]
     )
     ui.run(
         title='DALIA', 
-        favicon=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'files', 'assets', 'DALI_logo.png'),
+        favicon=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'),
         storage_secret=uuid.uuid4().hex,
         host="0.0.0.0", 
         port=8080,
