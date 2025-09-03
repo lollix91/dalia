@@ -146,8 +146,8 @@ class InteractiveShell(ui.element):
                     ui.image(rh.img)
                 ui.label(title).classes("text-negative")
             self.output = ui.log(max_lines=1000).classes(
-                "text-green-500 overflow-auto"
-            )
+                "text-green-500 overflow-y-auto break-all"
+            ).style('white-space: pre-wrap;')
             ui.input("?-", placeholder='start typing').on('keydown.enter', self.on_enter).classes(
                 "rounded outlined dense"
             ).props('input-style="color: #87CEEB" input-class="font-mono"')
