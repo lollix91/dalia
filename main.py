@@ -173,6 +173,23 @@ class InteractiveShell(ui.element):
             except OSError:
                 break
 
+class Info(ui.dialog):
+    def __init__(self):
+        super().__init__(value=False)
+        with self, ui.card():
+            ui.icon('close', color='negative', size='lg').props("outlined").on('click', self.close)
+            log = ui.log().classes(
+                "text-blue-500 overflow-auto"
+            )
+            log.push(
+                """
+                DALIA: A GUI for DALI
+                - Author: Aly Shmahell
+                """.strip()
+            )
+    async def __call__(self):
+        self.open()
+
 class Main(ui.row):
     def __init__(self):
         super().__init__()
@@ -188,10 +205,11 @@ class Main(ui.row):
             cmds = await run.cpu_bound(build, src=os.path.abspath(args.src), sicstus=os.path.abspath(args.sicstus), dali=os.path.abspath(args.dali))
             self.remove(waiting)
         with self.grid:
-            for title, cmd in cmds.items():
-                logging.info(cmd)
-                InteractiveShell(cmd=cmd, title=title)
-                await asyncio.sleep(5)
+            if cmds is not None:
+                for title, cmd in cmds.items():
+                    logging.info(cmd)
+                    InteractiveShell(cmd=cmd, title=title)
+                    await asyncio.sleep(5)
 
 @ui.page("/")
 async def index():
@@ -219,9 +237,9 @@ async def index():
         with ui.avatar():
             ui.image(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'))
         ui.label("DALIA").style('color: #FFFFFF; font-size: 200%; font-weight: 900')
-        with ui.button(icon='menu'):
-            with ui.menu() as menu:
-                ui.menu_item(f"Authors")
+        info = Info()
+        ui.icon('info', size='lg').on('click', info)
+            
     
     with ui.card().classes("w-full flex justify-center items-center overflow-auto").props('dark'):
         Main()
@@ -231,9 +249,9 @@ async def index():
     
 if __name__ in {"__main__", "__mp_main__"}:
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--src', type=str, required=True)
-    argparser.add_argument('--dali', type=str, required=True)
-    argparser.add_argument('--sicstus', type=str, required=True)
+    argparser.add_argument('--src', type=str, required=True, help="path to the MAS source code (like the example folder)")
+    argparser.add_argument('--dali', type=str, required=True, help="path to the dali directory")
+    argparser.add_argument('--sicstus', type=str, required=True, help="path to the sicstus directory")
     args      = argparser.parse_args()
     logging.basicConfig(
         level=logging.INFO,
