@@ -1,4 +1,6 @@
 t60.
+genericE(X) :> write('Generic message about: '), write(X), nl.
 alarmE(X) :> write('ALARM: '), write(X), nl.
+falarmE(X) :> write('False ALARM: '), write(X), nl.
 start_evacuationE(X) :> write('START evacuation towards '), write(X), nl.
 evacuation_doneE :> write('Evacuation completed'), nl.

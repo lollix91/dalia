@@ -3,9 +3,7 @@ t60.
 :- dynamic state/1.
 :- assert(state(0)).
 
-detect_smokeE :> alarmA(smoke).
-detect_gasE :> alarmA(gas).
-detect_earthquakeE :> retract(state(_)), assert(state(1)), alarmA(earthquake).
+senseE(X) :> retract(state(_)), assert(state(1)), alarmA(X).
 
 iamawake(X) :- state(X), X==1.
 
