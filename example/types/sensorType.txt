@@ -1,15 +1,14 @@
 t60.
 
 :- dynamic state/1.
-:- assert(state(0)).
 
-senseE(X) :> retract(state(_)), assert(state(1)), alarmA(X).
+senseE(X) :> \+ state(_), assert(state(X)), reportA(generic(X)), !.
+senseE(X) :> state(_), retract(state(_)), assert(state(X)), reportA(generic(X)).
 
-iamawake(X) :- state(X), X==1.
+alarms(X) :- state(_), state(X), write('testing '), write(X), nl, member(X, [smoke, fire, earthquake]), write('done testing '), write(X), nl.
+alarmsI(X) :> messageA(coordinator, send_message(alarm(X), Me)), retract(state(_)).
 
-iamawakeI(X) :> write('I am Awake'), state(X), write(X), nl.
+falarms(X) :- state(_), state(X), write('testing '), write(X), nl, \+ member(X, [smoke, fire, earthquake]), write('done testing '), write(X), nl.
+falarmsI(X) :> reportA(falarm(X)), retract(state(_)).
 
-alarmA(X) :> messageA(coordinator, send_message(alarm(X), Me)).
-
-goE:> write('received.'), nl, 
-      messageA(coordinator,send_message(go, Me)).
+reportA(X) :> messageA(logger, send_message(X, Me)).

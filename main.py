@@ -177,19 +177,27 @@ class InteractiveShell(ui.element):
         self.output.push(self.strip_ansi(msg))
 
 class Info(ui.dialog):
-    def __init__(self):
+    def __init__(self, mapping: dict):
         super().__init__(value=False)
-        with self, ui.card():
+        with self, ui.card().classes('w-[100vw]'):
             ui.icon('close', color='negative', size='lg').props("outlined").on('click', self.close)
-            log = ui.log().classes(
-                "text-blue-500 overflow-auto"
-            )
-            log.push(
-                """
-                DALIA: A GUI for DALI
-                - Author: Aly Shmahell
-                """.strip()
-            )
+            ui.label('LICENSES').tailwind.text_color('orange-600')
+            with ui.list().classes("w-full"):
+                for title, path  in mapping.items():
+                    content = ''
+                    try:
+                        with open(path, 'r') as f:
+                            content = f.read()
+                    except Exception as e:
+                        logging.exception(e)
+                        content = ''
+                    if not content:
+                        continue
+                    with ui.item():
+                        with ui.expansion(title).classes('w-full') as exp:
+                            exp.tailwind.text_color('pink-400')
+                            ui.markdown(content=content).tailwind.text_color('black')
+                    ui.separator()
     async def __call__(self):
         self.open()
 
@@ -248,7 +256,10 @@ async def index():
         with ui.avatar():
             ui.image(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'))
         ui.label("DALIA").style('color: #FFFFFF; font-size: 200%; font-weight: 900')
-        info = Info()
+        info = Info({
+            'DALIA': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LICENSE'),
+            'DALI': os.path.join(os.path.abspath(args.dali), 'LICENSE')
+        })
         ui.icon('info', size='lg').on('click', info)
     with ui.card().classes("w-full flex justify-center items-center overflow-auto").props('dark'):
         Main()
