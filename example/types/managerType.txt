@@ -1,0 +1,7 @@
+t60.
+
+emergencyE(E) :>
+    E == fire -> messageA(coordinator, send_message(equipped(firetruck), Me));
+    E == earthquake -> messageA(coordinator, send_message(equipped(buldozer), Me));
+    E == smoke -> messageA(coordinator, send_message(equipped(respirator), Me));
+    write('').

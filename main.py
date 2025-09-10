@@ -12,7 +12,7 @@ import argparse
 import threading
 import subprocess
 from robohash import Robohash
-from nicegui import ui, background_tasks, run
+from nicegui import ui, background_tasks, run, app
 
 
 class AnsiStrip:
@@ -147,12 +147,13 @@ class InteractiveShell(ui.element):
                 with ui.avatar():
                     ui.image(rh.img)
                 ui.label(title).classes("text-negative")
-            self.output = ui.log(max_lines=1000).classes(
+            self.output = ui.log().classes(
                 "text-green-500 overflow-y-auto break-all"
             ).style('white-space: pre-wrap;')
-            ui.input("?-", placeholder='start typing').on('keydown.enter', self.on_enter).classes(
+            self.input = ui.input("?-", placeholder='?-').on('keydown.enter', self.on_enter).classes(
                 "rounded outlined dense"
             ).props('input-style="color: #87CEEB" input-class="font-mono"')
+            self.output.on('click', lambda: self.input.run_method('focus'))
             threading.Thread(target=self.read_output, daemon=True).start()
     async def on_enter(self, e):
         cmd = e.sender.value
@@ -266,6 +267,10 @@ async def index():
     with ui.footer(elevated=True).classes("justify-center items-center"):
         ui.label("Copyrights 2025 Ⓒ Aly Shmahell")
 
+def on_disconnect():
+    logging.info("GUI disconnected...")
+    p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
+    p.wait()
     
 if __name__ in {"__main__", "__mp_main__"}:
     argparser = argparse.ArgumentParser()
@@ -279,6 +284,7 @@ if __name__ in {"__main__", "__mp_main__"}:
             logging.StreamHandler()
         ]
     )
+    app.on_disconnect(on_disconnect)
     ui.run(
         title='DALIA', 
         favicon=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'),

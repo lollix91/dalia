@@ -1,0 +1,3 @@
+t60.
+
+respondE(E, L) :> write('using '), write(E), write(' at '), write(L), nl, messageA(coordinator, send_message(responded(L), Me)).

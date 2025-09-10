@@ -1,13 +1,24 @@
 t60.
 
-alarmE(smoke) :> start_evacuationA(exit_north), logA(alarm(smoke)).
-alarmE(gas) :> start_evacuationA(exit_south), logA(alarm(gas)).
-alarmE(earthquake) :> start_evacuationA(exit_west), logA(alarm(earthquake)).
+:- dynamic location/1.
+:- dynamic equipment/1.
+:- dynamic evacuated/1.
+:- dynamic responded/1.
 
-start_evacuationA(X) :> messageA(evacuator, send_message(start_evacuation(X), Me)).
+alarmE(E, L) :> assert(location(L)), evacuateA(L), equipA(E).
 
-evacuation_doneE :> logA(evacuation_done).
+equippedE(E) :> assert(equipment(E)).
+evacuatedE(L):> assert(evacuated(L)).
+respondedE(L):> assert(responded(L)).
+
+response(E, L) :- location(_), location(L), equipment(_), equipment(E).
+responseI(E, L) :> messageA(responder, send_message(respond(E, L), Me)), retract(location(_)), retract(equipment(_)).
+
+done(L) :- evacuated(_), evacuated(L), responded(_), responded(E).
+doneI(L) :> logA(message(done)), retract(evacuated(_)), retract(responded(_)).
+
+equipA(E):> messageA(manager, send_message(emergency(E), Me)).
+
+evacuateA(L):> messageA(evacuator, send_message(evacuate(L), Me)).
 
 logA(X) :> messageA(logger, send_message(X, Me)).
-
-goE:> write('received'), nl.

@@ -1,6 +1,0 @@
-t60.
-
-:- dynamic state/1.
-:- assert(state(0)).
-
-senseE(X) :> write('sensing '), write(X), nl, retract(state(_)), write('Done!'), nl.

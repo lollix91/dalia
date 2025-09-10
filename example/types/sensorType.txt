@@ -1,14 +1,14 @@
 t60.
 
-:- dynamic state/1.
+:- dynamic state/2.
 
-senseE(X) :> \+ state(_), assert(state(X)), reportA(generic(X)), !.
-senseE(X) :> state(_), retract(state(_)), assert(state(X)), reportA(generic(X)).
+senseE(X, L) :> \+ state(_,_), assert(state(X, L)), reportA(generic(X, L)), !.
+senseE(X, L) :> state(_,_), retract(state(_,_)), assert(state(X, L)), reportA(generic(X, L)).
 
-alarms(X) :- state(_), state(X), write('testing '), write(X), nl, member(X, [smoke, fire, earthquake]), write('done testing '), write(X), nl.
-alarmsI(X) :> messageA(coordinator, send_message(alarm(X), Me)), retract(state(_)).
+alarms(X, L) :- state(_,_), state(X, L), write('testing '), write(X), nl, member(X, [smoke, fire, earthquake]), write('done testing '), write(X), nl.
+alarmsI(X, L) :> messageA(coordinator, send_message(alarm(X, L), Me)), retract(state(_,_)).
 
-falarms(X) :- state(_), state(X), write('testing '), write(X), nl, \+ member(X, [smoke, fire, earthquake]), write('done testing '), write(X), nl.
-falarmsI(X) :> reportA(falarm(X)), retract(state(_)).
+falarms(X) :- state(_,_), state(X, L), write('testing '), write(X), nl, \+ member(X, [smoke, fire, earthquake]), write('done testing '), write(X), nl.
+falarmsI(X) :> reportA(falarm(X, L)), retract(state(_,_)).
 
 reportA(X) :> messageA(logger, send_message(X, Me)).

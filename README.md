@@ -1,4 +1,4 @@
-# dalia
+# Dalia
 DALI Containarized and GUIfied
 
 ### Pre-Requisites:

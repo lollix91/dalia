@@ -2,5 +2,7 @@
     "sensor": "sensorType",
     "logger": "loggerType",
     "evacuator": "evacuatorType",
-    "coordinator": "coordinatorType"
+    "coordinator": "coordinatorType",
+    "manager": "managerType",
+    "responder": "responderType"
 }
