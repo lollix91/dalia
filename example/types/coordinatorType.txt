@@ -15,7 +15,7 @@ response(E, L) :- location(_), location(L), equipment(_), equipment(E).
 responseI(E, L) :> messageA(responder, send_message(respond(E, L), Me)), retract(location(_)), retract(equipment(_)).
 
 done(L) :- evacuated(_), evacuated(L), responded(_), responded(E).
-doneI(L) :> logA(message(done)), retract(evacuated(_)), retract(responded(_)).
+doneI(L) :> logA(message(coordinator, done)), retract(evacuated(_)), retract(responded(_)).
 
 equipA(E):> messageA(manager, send_message(emergency(E), Me)).
 

@@ -80,6 +80,7 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 | Event                | Type     | Source      |
 |----------------------|----------|-------------|
 | `emergency(E)`        | external | Coordinator |
+| `dispense(E)`        | internal | state |
 
 
 #### Logger
@@ -98,30 +99,44 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 
 | Action                      | Description                                 |
 |-----------------------------|---------------------------------------------|
-| `report(X)`   | sends events to the Logger           |
+| `log(X)`   | sends events to the Logger           |
 
 #### Coordinator
 
 | Action                      | Description                                 |
 |-----------------------------|---------------------------------------------|
-| `report(X)`   | sends events to the Logger           |
 | `equip(X)`   | sends equipment request to the Manager           |
 | `evacuate(X)`   | sends evacuation command to the Evacuator           |
+| `log(X)`   | sends events to the Logger           |
 
 
 #### Evacuator
 
 | Action                      | Description                                 |
 |-----------------------------|---------------------------------------------|
-| `report(X)`   | sends events to the Logger           |
+| `log(X)`   | sends events to the Logger           |
+
+
+#### Manager
+
+| Action                      | Description                                 |
+|-----------------------------|---------------------------------------------|
+| `log(X)`   | sends events to the Logger           |
+
+
+#### Responder
+
+| Action                      | Description                                 |
+|-----------------------------|---------------------------------------------|
+| `log(X)`   | sends events to the Logger           |
 ---
 
 ### 1.5 Agent Behaviors
 
-- **Sensor**: Proactive; generates states upon detecting anomalies, filters out alarms from false and informs the coordinator.
-- **Coordinator**: reactive to incoming alarms; proactive in managing the response strategy according to incoming equipment, also proactive in manageing its states until it achieve equilibrium (internal event done).
+- **Sensor**: Proactive; generates states upon detecting anomalies, filters out alarms from false and informs the coordinator, and Proactive for its use of internal states and events.
+- **Coordinator**: reactive to incoming alarms; proactive in managing the response strategy according to incoming equipment, also proactive in manageing its states until it achieve equilibrium (internal event done), and Proactive for its use of internal states and events.
 - **Evacuator**: reactive to evacuation commands; can report issues or confirmation.
-- **Manager**: Proactive by evaluating which equipment belongs to which emergency response.
+- **Manager**: Proactive by evaluating which equipment belongs to which emergency response, and its use of internal states and events.
 - **Responder**: reactive to response commands; can report issues or confirmation.
 - **Logger**: reactive; logs every received message or command.
 

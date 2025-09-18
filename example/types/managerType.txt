@@ -1,7 +1,14 @@
 t60.
+:- dynamic state/2.
 
 emergencyE(E) :>
-    E == fire -> messageA(coordinator, send_message(equipped(firetruck), Me));
-    E == earthquake -> messageA(coordinator, send_message(equipped(buldozer), Me));
-    E == smoke -> messageA(coordinator, send_message(equipped(respirator), Me));
+    E == fire -> assert(state(firetruck, fire));
+    E == earthquake -> assert(state(buldozer, earthquake));
+    E == smoke -> assert(state(respirator, smoke));
     write('').
+
+dispense(X, E) :- state(_,_), state(X, E), write('Equipment for Emergency '), write(E), nl, member(X, [firetruck, buldozer, respirator]), write(' -> '), write(X), nl.
+dispenseI(X, E) :> messageA(coordinator, send_message(equipped(X), Me)), retract(state(_,_)), logA(message(manager, done)).
+
+
+logA(X) :> messageA(logger, send_message(X, Me)).

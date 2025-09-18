@@ -1,5 +1,5 @@
 t60.
 genericE(X, L) :> write('Event: '), write(X), write(' at: '), write(L), nl.
-alarmE(X, L) :> write('ALARM: '), write(' at: '), write(L), write(X), nl.
-falarmE(X, L) :> write('False: '), write(' at: '), write(L), write(X), nl.
-messageE(X) :> write('Message: '), write(X), nl.
+alarmE(X, L) :> write('ALARM: '), write(X), write(' at: '), write(L), nl.
+falarmE(X, L) :> write('False: '), write(X), write(' at: '), write(L), nl.
+messageE(A, X) :> write('Agent: '), write(A), write(' - Message: '), write(X), nl.
