@@ -1,6 +1,7 @@
 
 ```mermaid
 classDiagram
+    direction TB
     Sensor :  dynamic state
     Sensor:   external senseE(X, L)
     Sensor:   internal alarmsI(X, L)
@@ -32,8 +33,29 @@ classDiagram
     Responder:   external respondE(E, L)
     Responder:   action   logA(X)
 
+
+    Communicator:   predicate forall(Generator, Action)
+    Communicator:   external communicateE(Targets, Content)
+    Communicator:   action   contactA(Target, Content)
+
+    Person:   external messageE(Content)
+
     Logger:   external genericE(X, L)
     Logger:   external alarmE(X, L)
     Logger:   external falarmE(X, L)
     Logger:   external messageE(A, X)
+
+    Sensor -- Coordinator
+    Coordinator -- Communicator
+    Coordinator -- Evacuator
+    Coordinator -- Manager
+    Coordinator -- Responder
+
+    Communicator -- Person
+
+    Sensor -- Logger
+    Coordinator -- Logger
+    Evacuator -- Logger
+    Manager -- Logger
+    Responder -- Logger
 ```

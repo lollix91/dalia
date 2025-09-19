@@ -19,6 +19,8 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 | **Manager**| Evaluates and dispatches the proper equipment for the emegency type.      |
 | **Responder**| uses the equipment to counteract and remedy the emergency at the affected location.                              |
 | **Logger**   | Records all events, actions, and system status.           |
+| **Communicator**   | sends mass alarms to citizens           |
+| **Person**   | receives a copy of the mass alarms.           |
 
 ---
 
@@ -31,11 +33,13 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
   - Support distributed decision-making among agents.
 - **Roles and Interactions**:
   - `Sensor → Coordinator`: sends alarm messages.
+  - `Coordinator → Communicator`: sends mass alarm.
+  - `Communicator → Person`: sends a copy of the mass alarm.
   - `Coordinator → Evacuator`: sends evacuation commands.
   - `Coordinator → Manager`: requests equipment.
   - `Manager → Coordinator`: dispatches equipment.
   - `Coordinator → Responder`: sends emergency response command.
-  - `All → Logger`: record of all relevant events and actions.
+  - `Sensor/Coordinator/Manager/Evacuator/Responder → Logger`: record of all relevant events and actions.
 
 ---
 
@@ -91,6 +95,20 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 | `alarm(E, L)`        | external | agents |
 | `falarm(E, L)`        | external | agents |
 | `message(X)`        | external | agents |
+
+
+#### Communicator
+
+| Event                | Type     | Source      |
+|----------------------|----------|-------------|
+| `communicate(Targets, Content)`        | external | Coordinator |
+
+
+#### Person
+
+| Event                | Type     | Source      |
+|----------------------|----------|-------------|
+| `message(Content)`        | external | Communicator |
 ---
 
 ### 1.4 Action Table
@@ -129,6 +147,13 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 | Action                      | Description                                 |
 |-----------------------------|---------------------------------------------|
 | `log(X)`   | sends events to the Logger           |
+
+
+#### Communicator
+
+| Action                      | Description                                 |
+|-----------------------------|---------------------------------------------|
+| `contact(Target, Content)`   | sends Content to a  Target of type Person          |
 ---
 
 ### 1.5 Agent Behaviors
@@ -139,5 +164,7 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 - **Manager**: Proactive by evaluating which equipment belongs to which emergency response, and its use of internal states and events.
 - **Responder**: reactive to response commands; can report issues or confirmation.
 - **Logger**: reactive; logs every received message or command.
+- **Communicator**: hybrid reactive/proactive; receives a list of targets and a message content and maps that content to a message to be mass sent to all targets.
+- **Person**: reactive; receives a coppy of the mass message content.
 
 ---

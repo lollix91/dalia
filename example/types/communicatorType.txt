@@ -1,0 +1,10 @@
+t60.
+
+my_forall(Generator, Goal) :-
+    call(Generator),
+    call(Goal),
+    fail.
+
+communicateE(Targets, Content) :> my_forall(member(Target, Targets), contactA(Target, Content)) .
+
+contactA(Target, Content) :> messageA(Target, send_message(message(Content), Me)).

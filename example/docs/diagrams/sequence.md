@@ -6,6 +6,8 @@ sequenceDiagram
     participant M as Manager
     participant R as Responder
     participant L as Logger
+    participant CC as Communicator
+    participant P as Person
 
     Note over S: Detects environmental anomaly, Filters out False Alarms
     Note over C: Coordinates between all other agents
@@ -13,11 +15,16 @@ sequenceDiagram
     Note over M: evaluates and dispenses appropriate equipment according to the emergency type
     Note over R: uses the equipment to resolve the emergency type
     Note over L: Records all events
+    Note over CC: sends mass alarm to all people to prepare for evacuation
+    Note over P: prepares to get evacuated
 
     S->>L: generic(E, L)
     S->>C: alarm(E, L)
     S->>L: alarm/falarm(E, L)
 
+
+    C->>CC: communicate(Targets, Content)
+    CC->>P: message(Content)
 
     C->>E: evacuate(L)
     E->>C: evacuated(L)

@@ -33,10 +33,13 @@ tell(To,_,inform(_,M)):-true;M=motivation(refused_message).
 tell(To,_,inform(_)):-true,To\=user.
 tell(To,_,propose_desire(_,_)):-true.
 
-told(Ag,inform(connect_peer_req(Peer,Sender)),70):-
-    write('told(Ag,inform(connect_peer_req(Peer,Sender)),70) '),
-    write(Peer),
-    send(Peer,send_message(peer_to_connect(Sender),Peer)),
+told(Ag,inform(communicate(Targets, Content, Sender)),70):-
+	write('Ag: '), write(Ag),nl,
+    write('Targets: '), write(Targets),nl,
+    write('Content: '), write(Content),nl,
+    write('Sender: '), write(Sender),nl,
+	write('done told message'),nl,
+	send(Sender,send_message(communicate(Targets, Content), Sender)),
     !.
 
 meta(P,V,AgM):-

@@ -119,7 +119,7 @@ def build(*, src, sicstus, dali):
 
 
 class InteractiveShell(ui.element):
-    def __init__(self, *, cmd: str, title: str, _client = None):
+    def __init__(self, *, cmd: str, title: str, value: str ='', _client = None):
         super().__init__('div', _client=_client)
         self.classes("p-4 font-mono bg-black").props("dark")
         with self:
@@ -150,10 +150,9 @@ class InteractiveShell(ui.element):
             self.output = ui.log().classes(
                 "text-green-500 overflow-y-auto break-all"
             ).style('white-space: pre-wrap;')
-            self.input = ui.input("?-", placeholder='?-').on('keydown.enter', self.on_enter).classes(
+            self.input = ui.input(value=value, placeholder='?-').on('keydown.enter', self.on_enter).classes(
                 "rounded outlined dense"
-            ).props('input-style="color: #87CEEB" input-class="font-mono"')
-            self.output.on('click', lambda: self.input.run_method('focus'))
+            ).props('input-style="color: #87CEEB" input-class="font-mono" clearable')
             threading.Thread(target=self.read_output, daemon=True).start()
     async def on_enter(self, e):
         cmd = e.sender.value
@@ -224,7 +223,7 @@ class Main(ui.row):
                 await asyncio.sleep(5)
                 user = cmds.pop('user')
                 logging.info(user)
-                InteractiveShell(cmd=user, title='send_message(sense(smoke, rome), Me).')
+                InteractiveShell(cmd=user, title='user', value="send_message(sense(smoke, rome), Me).")
                 await asyncio.sleep(5)
                 for title, cmd in cmds.items():
                     logging.info(cmd)

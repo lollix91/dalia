@@ -5,6 +5,7 @@
     "coordinator": "coordinatorType",
     "manager": "managerType",
     "responder": "responderType",
+    "communicator": "communicatorType",
     "mary": "personType",
     "john": "personType"
 }

@@ -1,4 +1,3 @@
 t60.
 
-peer_to_connectE(Sender):>
-    write(Sender), nl.
+messageE(Content):> write('received alarm about '), write(Content), write(', preparing for evacuation.'), nl.

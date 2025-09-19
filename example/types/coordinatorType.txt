@@ -19,6 +19,6 @@ doneI(L) :> logA(message(coordinator, done)), retract(evacuated(_)), retract(res
 
 equipA(E):> messageA(manager, send_message(emergency(E), Me)).
 
-evacuateA(E, L):> messageA(mary,inform(connect_peer_req(mary,coordniator),coordniator)), messageA(evacuator, send_message(evacuate(L), Me)).
+evacuateA(E, L):> messageA(communicator,inform(communicate([mary, john], E, communicator), communicator)), messageA(evacuator, send_message(evacuate(L), Me)).
 
 logA(X) :> messageA(logger, send_message(X, Me)).
