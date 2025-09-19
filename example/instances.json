@@ -4,5 +4,7 @@
     "evacuator": "evacuatorType",
     "coordinator": "coordinatorType",
     "manager": "managerType",
-    "responder": "responderType"
+    "responder": "responderType",
+    "mary": "personType",
+    "john": "personType"
 }

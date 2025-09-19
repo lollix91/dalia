@@ -5,7 +5,7 @@ t60.
 :- dynamic evacuated/1.
 :- dynamic responded/1.
 
-alarmE(E, L) :> assert(location(L)), evacuateA(L), equipA(E).
+alarmE(E, L) :> assert(location(L)), evacuateA(E, L), equipA(E).
 
 equippedE(E) :> assert(equipment(E)).
 evacuatedE(L):> assert(evacuated(L)).
@@ -19,6 +19,6 @@ doneI(L) :> logA(message(coordinator, done)), retract(evacuated(_)), retract(res
 
 equipA(E):> messageA(manager, send_message(emergency(E), Me)).
 
-evacuateA(L):> messageA(evacuator, send_message(evacuate(L), Me)).
+evacuateA(E, L):> messageA(mary,inform(connect_peer_req(mary,coordniator),coordniator)), messageA(evacuator, send_message(evacuate(L), Me)).
 
 logA(X) :> messageA(logger, send_message(X, Me)).

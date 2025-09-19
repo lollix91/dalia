@@ -224,7 +224,7 @@ class Main(ui.row):
                 await asyncio.sleep(5)
                 user = cmds.pop('user')
                 logging.info(user)
-                InteractiveShell(cmd=user, title='user')
+                InteractiveShell(cmd=user, title='send_message(sense(smoke, rome), Me).')
                 await asyncio.sleep(5)
                 for title, cmd in cmds.items():
                     logging.info(cmd)

@@ -1,0 +1,4 @@
+t60.
+
+peer_to_connectE(Sender):>
+    write(Sender), nl.

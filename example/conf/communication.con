@@ -33,6 +33,12 @@ tell(To,_,inform(_,M)):-true;M=motivation(refused_message).
 tell(To,_,inform(_)):-true,To\=user.
 tell(To,_,propose_desire(_,_)):-true.
 
+told(Ag,inform(connect_peer_req(Peer,Sender)),70):-
+    write('told(Ag,inform(connect_peer_req(Peer,Sender)),70) '),
+    write(Peer),
+    send(Peer,send_message(peer_to_connect(Sender),Peer)),
+    !.
+
 meta(P,V,AgM):-
         functor(P,F,N),N=0,clause(agent(Ag),_),
         clause(ontology(Pre,[Rep,Host],Ag),_),
