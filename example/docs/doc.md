@@ -1,4 +1,4 @@
-# Emergency Filtering-Evacuation-Response
+# Emergency Filtering/Evacuation/Response MAS
 
 Title: __Multi-Agent System for Emergency Management in a City or Comune__
 
@@ -7,7 +7,7 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 
 ---
 
-## Phase 1: 
+## Documentation: 
 
 ### 1.1 Roles
 

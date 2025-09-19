@@ -1,5 +1,8 @@
 
 ```mermaid
+---
+title: Class Diagram - Emergency Filtering/Evacuation/Response MAS
+---
 classDiagram
     direction TB
     Sensor :  dynamic state

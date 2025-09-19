@@ -1,4 +1,7 @@
 ```mermaid
+---
+title: Sequence Diagram - Emergency Filtering/Evacuation/Response MAS
+---
 sequenceDiagram
     participant S as Sensor
     participant C as Coordinator
