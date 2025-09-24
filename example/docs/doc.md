@@ -19,7 +19,7 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 | **Manager**| Evaluates and dispatches the proper equipment for the emegency type.      |
 | **Responder**| uses the equipment to counteract and remedy the emergency at the affected location.                              |
 | **Logger**   | Records all events, actions, and system status.           |
-| **Communicator**   | sends mass alarms to citizens           |
+| **Communicator**   | sends mass alarms to citizens as a response of being informed by the coordinator of a disaster/emergency           |
 | **Person**   | receives a copy of the mass alarms.           |
 
 ---
@@ -33,8 +33,8 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
   - Support distributed decision-making among agents.
 - **Roles and Interactions**:
   - `Sensor → Coordinator`: sends alarm messages.
-  - `Coordinator → Communicator`: sends mass alarm.
-  - `Communicator → Person`: sends a copy of the mass alarm.
+  - `Coordinator → Communicator`: informs the communicator of emergency.
+  - `Communicator → Person`: sends a mass alarm with the emergency it has been informed with.
   - `Coordinator → Evacuator`: sends evacuation commands.
   - `Coordinator → Manager`: requests equipment.
   - `Manager → Coordinator`: dispatches equipment.
@@ -124,7 +124,7 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 | Action                      | Description                                 |
 |-----------------------------|---------------------------------------------|
 | `equip(X)`   | sends equipment request to the Manager           |
-| `evacuate(X)`   | sends evacuation command to the Evacuator           |
+| `evacuate(X)`   | sends evacuation command to the Evacuator   using the **inform FIPA performative**        |
 | `log(X)`   | sends events to the Logger           |
 
 
@@ -159,12 +159,12 @@ This Multi agent System follows [**GAIA methodology**](https://link.springer.com
 ### 1.5 Agent Behaviors
 
 - **Sensor**: Proactive; generates states upon detecting anomalies, filters out alarms from false and informs the coordinator, and Proactive for its use of internal states and events.
-- **Coordinator**: reactive to incoming alarms; proactive in managing the response strategy according to incoming equipment, also proactive in manageing its states until it achieve equilibrium (internal event done), and Proactive for its use of internal states and events.
+- **Coordinator**: reactive to incoming alarms; proactive in managing the response strategy according to incoming equipment, also proactive in manageing its states until it achieve equilibrium (internal event done), and Proactive for its use of internal states and events. uses the **inform FIPA performative** to tell the communicator to mass inform the people in a disaster zone the type of disaster (mass alarm).
 - **Evacuator**: reactive to evacuation commands; can report issues or confirmation.
 - **Manager**: Proactive by evaluating which equipment belongs to which emergency response, and its use of internal states and events.
 - **Responder**: reactive to response commands; can report issues or confirmation.
 - **Logger**: reactive; logs every received message or command.
-- **Communicator**: hybrid reactive/proactive; receives a list of targets and a message content and maps that content to a message to be mass sent to all targets.
+- **Communicator**: hybrid reactive/proactive; receives a list of targets and a message content as a result of an **inform FIPA performative** and maps that content to a message to be mass sent to all targets.
 - **Person**: reactive; receives a coppy of the mass message content.
 
 ---
