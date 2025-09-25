@@ -2,6 +2,8 @@
 
 PUPPETEER_EXECUTABLE_PATH=/opt/google/chrome/chrome mmdc -i ../example/docs/diagrams/class.md -o class.pdf -w 800 -H 600 -s 1.2
 PUPPETEER_EXECUTABLE_PATH=/opt/google/chrome/chrome mmdc -i ../example/docs/diagrams/sequence.md -o sequence.pdf -w 800 -H 600 -s 1.2
+PUPPETEER_EXECUTABLE_PATH=/opt/google/chrome/chrome mmdc -i ../example/docs/diagrams/class.md -o class.png -w 4800 -H 3600 -s 1.2
+PUPPETEER_EXECUTABLE_PATH=/opt/google/chrome/chrome mmdc -i ../example/docs/diagrams/sequence.md -o sequence.png -w 4800 -H 3600 -s 1.2
 ./md2pdfedu.sh ../example/docs/doc.md  doc.pdf
 ./md2pdfedu.sh ../README.md  readme.pdf
 ./md2pdfedu.sh ./compatibility.md  compatibility.pdf
