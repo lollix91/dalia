@@ -223,15 +223,25 @@ class Main(ui.row):
                 await asyncio.sleep(5)
                 user = cmds.pop('user')
                 logging.info(user)
-                InteractiveShell(cmd=user, title='user', value="send_message(sense(smoke, rome), Me).")
+                InteractiveShell(cmd=user, title='user', value="")
                 await asyncio.sleep(5)
                 for title, cmd in cmds.items():
                     logging.info(cmd)
                     InteractiveShell(cmd=cmd, title=title)
                     await asyncio.sleep(5)
-
+def alreadyopen():
+    with ui.dialog().props('persistent') as dialog, ui.card().classes("flex justify-center items-center"):
+        ui.icon('error', color='negative').classes('text-5xl')
+        ui.label('DALIA is already open somewhere else')
+    dialog.open()
+active_sessions = set()
 @ui.page("/")
-async def index():
+async def index(client):
+    session_id = client.id
+    if active_sessions and client.id not in active_sessions:
+        alreadyopen()
+        return
+    active_sessions.add(session_id)
     ui.colors(primary='#000')
     ui.add_css(r'''
                 a:link, a:visited {color: inherit !important; text-decoration: none; font-weight: 500}
@@ -265,11 +275,12 @@ async def index():
         Main()
     with ui.footer(elevated=True).classes("justify-center items-center"):
         ui.label("Copyrights 2025 Ⓒ Aly Shmahell")
-
-def on_disconnect():
-    logging.info("GUI disconnected...")
-    p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
-    p.wait()
+    @client.on_disconnect
+    def _():
+        active_sessions.discard(session_id)
+        logging.info("GUI disconnected...")
+        p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
+        p.wait()
     
 if __name__ in {"__main__", "__mp_main__"}:
     argparser = argparse.ArgumentParser()
@@ -283,7 +294,6 @@ if __name__ in {"__main__", "__mp_main__"}:
             logging.StreamHandler()
         ]
     )
-    app.on_disconnect(on_disconnect)
     ui.run(
         title='DALIA', 
         favicon=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'),

@@ -1,11 +1,11 @@
 {
-    "sensor": "sensorType",
     "logger": "loggerType",
-    "evacuator": "evacuatorType",
+    "sensor": "sensorType",
     "coordinator": "coordinatorType",
-    "manager": "managerType",
-    "responder": "responderType",
     "communicator": "communicatorType",
     "mary": "personType",
-    "john": "personType"
+    "john": "personType",
+    "evacuator": "evacuatorType",
+    "manager": "managerType",
+    "responder": "responderType"
 }
