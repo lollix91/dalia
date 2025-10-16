@@ -76,7 +76,7 @@ def rmdir(path):
                 os.rmdir(os.path.join(root, dir))
         os.rmdir(path)
 
-def build(*, src, sicstus, dali):
+def build(*, src, dali):
     src = load_src(src)
     if not src:
         return
@@ -84,7 +84,8 @@ def build(*, src, sicstus, dali):
     p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
     p.wait()
     dali     = os.path.join(dali, 'src')
-    sicstus  = os.path.join(sicstus, 'bin', 'sicstus')
+    # Il nome del comando è sicstus perché è nel PATH di sistema del container
+    sicstus  = 'sicstus'
     rmdir(workdir)
     agentsdir = os.path.join(workdir, 'agents')
     setupsdir = os.path.join(workdir, 'setups')
@@ -213,7 +214,9 @@ class Main(ui.row):
             with ui.column().classes('w-full justify-center items-center').props('dark') as waiting:
                 ui.label(f"Building: {os.path.abspath(args.src)}")
                 ui.spinner(type='bars', color='positive')
-            cmds = await run.cpu_bound(build, src=os.path.abspath(args.src), sicstus=os.path.abspath(args.sicstus), dali=os.path.abspath(args.dali))
+            # === MODIFICA CHIAVE QUI (2/2) ===
+            # Rimuovi 'sicstus' dalla chiamata a run.cpu_bound
+            cmds = await run.cpu_bound(build, src=os.path.abspath(args.src), dali=os.path.abspath(args.dali))
             self.remove(waiting)
         with self.grid:
             if cmds is not None:

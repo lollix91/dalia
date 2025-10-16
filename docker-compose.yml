@@ -1,9 +1,7 @@
 services:
-  # python:3.13
   python:
     pull_policy: missing
     image: python:3.13
-  # dalia
   dalia:
     depends_on:
       - python
@@ -19,7 +17,6 @@ services:
     environment:
       - docker=true
     volumes:
-      - ${sicstus}:/sicstus
       - ${src}:/src
       - ${dali}:/dali
     networks:
