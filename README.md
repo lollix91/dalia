@@ -5,7 +5,7 @@ a containerized launcher with a GUI for multi-agent-systems written in [DALI](ht
 
 1. Install  [sicstus](https://sicstus.sics.se/)
 2. Clone    [DALI](https://github.com/AAAI-DISIM-UnivAQ/DALI):
-    - check the compatibility table [DALI-DALIA Compatibility](docs/compatibility.md)
+    - check the compatibility table [DALI-DALIA Compatibility](https://github.com/lollix91/dalia/compatibility.md)
     - e.g. 
     ```sh
     git clone --branch 2024.10 --depth 1 https://github.com/AAAI-DISIM-UnivAQ/DALI
@@ -15,12 +15,12 @@ a containerized launcher with a GUI for multi-agent-systems written in [DALI](ht
 ### Installation 
 1. Open a Unix-Style shell (e.g. GIT BASH)
 2. Clone [DALIA](https://github.com/lollix91/dalia)
-    - check the compatibility table [DALI-DALIA Compatibility](https://github.com/alyshmahell/dalia/compatibility.md)
+    - check the compatibility table [DALI-DALIA Compatibility](https://github.com/lollix91/dalia/compatibility.md)
     - e.g. 
     ```sh
-    git clone --depth 1 https://github.com/lollix91/dalia
+    git clone --branch 2025.10 --depth 1 https://github.com/lollix91/dalia
     or
-    git clone --branch 2025.09 --depth 1 https://github.com/lollix91/dalia
+    git clone --depth 1 https://github.com/lollix91/dalia
     ```
 3. Navigate into the cloned repo:
 ```sh
