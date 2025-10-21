@@ -4,6 +4,12 @@ a containerized launcher with a GUI for multi-agent-systems written in [DALI](ht
 ### Pre-Requisites:
 
 1. Install [docker](https://docs.docker.com/engine/install/)
+2. Clone [DALI](https://github.com/AAAI-DISIM-UnivAQ/DALI)
+    - check the compatibility table [DALI-DALIA Compatibility](https://github.com/lollix91/dalia/compatibility.md)
+    - e.g. 
+    ```sh
+    git clone --branch 2024.10 --depth 1 https://github.com/AAAI-DISIM-UnivAQ/DALI
+    ```
 
 ### Installation 
 1. Open a Unix-Style shell (e.g. GIT BASH)
