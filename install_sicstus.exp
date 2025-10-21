@@ -1,8 +1,8 @@
 #!/usr/bin/expect -f
 
-set site "lore"
-set expire "20251121"
-set code "25g4-a7cu-aerf-cyrc-hvv2"
+set site "SITENAME"
+set expire "EXPIRE"
+set code "CODE"
 
 # Imposta un timeout lungo per non bloccarsi
 set timeout -1
