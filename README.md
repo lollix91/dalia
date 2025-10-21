@@ -12,7 +12,7 @@ a containerized launcher with a GUI for multi-agent-systems written in [DALI](ht
     ```
 
 ### Installation 
-1. Open a Unix-Style shell (e.g. GIT BASH)
+1. Open a cmd shell (Command Prompt)
 2. Clone [DALIA](https://github.com/lollix91/dalia)
     - check the compatibility table [DALI-DALIA Compatibility](https://github.com/lollix91/dalia/blob/main/compatibility.md)
     - e.g. 
