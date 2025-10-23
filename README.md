@@ -17,7 +17,7 @@ a containerized launcher with a GUI for multi-agent-systems written in [DALI](ht
     - check the compatibility table [DALI-DALIA Compatibility](https://github.com/lollix91/dalia/blob/main/compatibility.md)
     - e.g. 
     ```sh
-    git clone --branch 2025.10.21 --depth 1 https://github.com/lollix91/dalia
+    git clone --branch 2025.10.23 --depth 1 https://github.com/lollix91/dalia
     or
     git clone --depth 1 https://github.com/lollix91/dalia
     ```

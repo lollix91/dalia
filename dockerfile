@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y wget build-essential expect perl dos2un
 WORKDIR /install
 
 # Scarica il tarball di SICStus Prolog per Linux
-RUN wget -O sicstus.tar.gz "https://sicstus.sics.se/sicstus/products4/sicstus/4.10.1/binaries/linux/sp-4.10.1-x86_64-linux-glibc2.28.tar.gz"
+RUN wget -O sicstus.tar.gz "https://sicstus.sics.se/sicstus/products4/sicstus/4.6.0/binaries/linux/sp-4.6.0-x86_64-linux-glibc2.17.tar.gz"
 
 # Estrai l'archivio
 RUN tar -xzf sicstus.tar.gz
@@ -18,7 +18,7 @@ COPY install_sicstus.exp /install/
 RUN dos2unix /install/install_sicstus.exp && chmod +x /install/install_sicstus.exp
 
 # Eseguiamo lo script per installare SICStus
-RUN cd sp-4.10.1-x86_64-linux-glibc2.28 && /install/install_sicstus.exp
+RUN cd sp-4.6.0-x86_64-linux-glibc2.17 && /install/install_sicstus.exp
 
 # Aggiungi l'eseguibile di SICStus al PATH di sistema
 ENV PATH="/usr/local/sicstus/bin:${PATH}"
