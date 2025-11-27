@@ -25,22 +25,15 @@ goto :parse_args
 echo "SRC: %SRC%"
 echo "DALI: %DALI%"
 
-docker info > nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo Docker non è in esecuzione. Avvia Docker Desktop e attendi che sia pronto.
+if "%SRC%"=="" (
+    echo Devi specificare --src
+    exit /b 1
+)
+if "%DALI%"=="" (
+    echo Devi specificare --dali
     exit /b 1
 )
 
-docker container prune -f 
-
-set "src=%SRC%"
-set "dali=%DALI%"
-
-echo Avvio dei container...
-docker compose down --remove-orphans
-docker compose up -d --build --force-recreate --no-deps
-
-echo Visualizzazione dei log...
-docker compose logs -f
+python "%~dp0main.py" --dali "%DALI%" --src "%SRC%"
 
 endlocal

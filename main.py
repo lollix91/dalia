@@ -1,6 +1,5 @@
 import os 
 import re
-import pty
 import uuid
 import time
 import json
@@ -11,6 +10,12 @@ import tempfile
 import argparse
 import threading
 import subprocess
+import socket
+
+try:
+    import pty
+except ImportError:  # pty is not available on Windows
+    pty = None
 from robohash import Robohash
 from nicegui import ui, background_tasks, run, app
 
@@ -26,9 +31,21 @@ def has_port(text: str, port: int) -> bool:
     return re.search(pattern, text) is not None
 
 def port_busy(port):
-    result = subprocess.run(['netstat', '-an'], capture_output=True, text=True)
-    logging.info(f"scanning for port {port}")
-    return has_port(result.stdout, port)
+    """Return True if the TCP port is already in use on localhost.
+
+    Instead of parsing platform-dependent netstat output, we simply try to
+    bind a socket on the given port. If bind fails, we assume the port is
+    busy. This works both on Windows and Unix-like systems.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.bind(("127.0.0.1", port))
+        except OSError:
+            logging.info(f"port {port} appears to be busy")
+            return True
+    logging.info(f"port {port} appears to be free")
+    return False
 
 def load_src(dirpath):
     result      = {
@@ -76,46 +93,92 @@ def rmdir(path):
                 os.rmdir(os.path.join(root, dir))
         os.rmdir(path)
 
-def build(*, src, dali):
+def build(*, src, dali, prolog):
     src = load_src(src)
     if not src:
         return
     workdir = tempfile.mkdtemp()
-    p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
-    p.wait()
+    in_docker = bool(os.environ.get('docker', False))
+    if in_docker and os.name != 'nt':
+        try:
+            p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
+            p.wait()
+        except Exception as e:
+            logging.exception(e)
     dali     = os.path.join(dali, 'src')
-    # Il nome del comando è sicstus perché è nel PATH di sistema del container
-    sicstus  = 'sicstus'
+
     rmdir(workdir)
-    agentsdir = os.path.join(workdir, 'agents')
-    setupsdir = os.path.join(workdir, 'setups')
-    confdir   = os.path.join(workdir, 'conf')
+    agentsdir_fs = os.path.join(workdir, 'agents')
+    setupsdir_fs = os.path.join(workdir, 'setups')
+    confdir_fs   = os.path.join(workdir, 'conf')
     logdir    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log')
     rmdir(logdir)
     os.makedirs(logdir, exist_ok=True)
-    os.makedirs(setupsdir, exist_ok=True)
-    os.makedirs(agentsdir, exist_ok=True)
-    os.makedirs(confdir, exist_ok=True)
-    with open(os.path.join(confdir, f'communication.con'), 'w') as f:
+    os.makedirs(setupsdir_fs, exist_ok=True)
+    os.makedirs(agentsdir_fs, exist_ok=True)
+    os.makedirs(confdir_fs, exist_ok=True)
+    with open(os.path.join(confdir_fs, f'communication.con'), 'w') as f:
         f.write(src["comm"])
+    agentsdir = agentsdir_fs.replace('\\', '/')
+    setupsdir = setupsdir_fs.replace('\\', '/')
+    confdir   = confdir_fs.replace('\\', '/')
+    dali_norm = dali.replace('\\', '/')
+
+    prolog_cmd = 'sicstus' if in_docker else (prolog or 'swipl')
+
     port = 3010
     logging.info(f"waiting for port {port} to be free")
     while port_busy(port):
         time.sleep(1)
     time.sleep(5)
-    cmds  = {
-        "server": f"{sicstus} --noinfo -l {os.path.join(dali, 'active_server_wi.pl')} --goal go."
-    }
+    server_pl = f"{dali_norm}/active_server_wi.pl"
+    user_pl   = f"{dali_norm}/active_user_wi.pl"
+    dali_pl   = f"{dali_norm}/active_dali_wi.pl"
+
+    if prolog_cmd == 'sicstus':
+        cmds  = {
+            "server": f"{prolog_cmd} --noinfo -l \"{server_pl}\" --goal go."
+        }
+    else:
+        cmds  = {
+            "server": f"{prolog_cmd} -q -l \"{server_pl}\" -g go"
+        }
+
     for name in src["agents"]:
-        with open(os.path.join(agentsdir, f'{name}.txt'), 'w') as f:
+        with open(os.path.join(agentsdir_fs, f'{name}.txt'), 'w') as f:
             f.write(src['agents'][name]["code"])
-        os.chmod(os.path.join(agentsdir, f'{name}.txt'), 0o755)
-        setup = f"agent('{agentsdir}/{name}', '{name}','no',italian,['{confdir}/communication'],['{dali}/communication_fipa','{dali}/learning','{dali}/planasp'],'no','{dali}/onto/dali_onto.txt',[])."
-        with open(os.path.join(setupsdir, f'{name}.txt'), 'w') as f:
+        os.chmod(os.path.join(agentsdir_fs, f'{name}.txt'), 0o755)
+        setup = f"agent('{agentsdir}/{name}', '{name}','no',italian,['{confdir}/communication'],['{dali_norm}/communication_fipa','{dali_norm}/learning','{dali_norm}/planasp'],'no','{dali_norm}/onto/dali_onto.txt',[])."
+
+        with open(os.path.join(setupsdir_fs, f'{name}.txt'), 'w') as f:
             f.write(setup)
-        os.chmod(os.path.join(setupsdir, f'{name}.txt'), 0o755)
-        cmds[f"{name}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dali, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
-    cmds["user"] = f"{sicstus} --noinfo -l {os.path.join(dali, 'active_user_wi.pl')} --goal user_interface."
+        os.chmod(os.path.join(setupsdir_fs, f'{name}.txt'), 0o755)
+        setup_path = os.path.join(setupsdir, f'{name}.txt').replace('\\', '/')
+        if prolog_cmd == 'sicstus':
+            cmds[f"{name}"] = " ".join([
+                prolog_cmd,
+                '--noinfo',
+                '-l',
+                f"\"{dali_pl}\"",
+                '--goal',
+                f'"start0(\'{setup_path}\')."',
+            ])
+        else:
+            cmds[f"{name}"] = " ".join([
+                prolog_cmd,
+                '-q',
+                '-l',
+                f"\"{dali_pl}\"",
+                '-g',
+                f"start0('{setup_path}')",
+                '-t',
+                'halt',
+            ])
+    if prolog_cmd == 'sicstus':
+        cmds["user"] = f"{prolog_cmd} --noinfo -l \"{user_pl}\" --goal user_interface."
+    else:
+        cmds["user"] = f"{prolog_cmd} -q -l \"{user_pl}\" -g utente"
+
     return cmds
 
 
@@ -126,17 +189,31 @@ class InteractiveShell(ui.element):
         with self:
             self.title = title
             self.strip_ansi = AnsiStrip()
-            self.master_fd, self.slave_fd = pty.openpty()
-            self.process = subprocess.Popen(
-                shlex.split(cmd),
-                stdin=self.slave_fd,
-                stdout=self.slave_fd,
-                stderr=self.slave_fd,
-                text=True,
-                bufsize=0,
-            )
-            os.close(self.slave_fd)
+            self._use_pty = bool(pty and os.name != 'nt')
+            self.master_fd = None
+            if self._use_pty:
+                self.master_fd, self.slave_fd = pty.openpty()
+                self.process = subprocess.Popen(
+                    shlex.split(cmd),
+                    stdin=self.slave_fd,
+                    stdout=self.slave_fd,
+                    stderr=self.slave_fd,
+                    text=True,
+                    bufsize=0,
+                )
+                os.close(self.slave_fd)
+            else:
+                self.process = subprocess.Popen(
+                    cmd,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    shell=True,
+                )
             rh = Robohash(title)
+
             if title == 'user':
                 roboset='set5'
             elif 'agent' in title:
@@ -161,21 +238,46 @@ class InteractiveShell(ui.element):
         if self.process.poll() is not None:
             self.output.push("[process exited]")
             return
-        os.write(self.master_fd, (cmd + "\n").encode())
-    def read_output(self):
-        while True:
+        if self._use_pty and self.master_fd is not None:
+            os.write(self.master_fd, (cmd + "\n").encode())
+        elif self.process.stdin:
             try:
-                data = os.read(self.master_fd, 1024).decode(errors='ignore')
-                if data:
-                    self.output.push(self.strip_ansi(data))
-                else:
-                    msg = f"OSError in {self.title}"
+                self.process.stdin.write(cmd + "\n")
+                self.process.stdin.flush()
+            except Exception as exc:
+                logging.exception(exc)
+    def read_output(self):
+        if self._use_pty and self.master_fd is not None:
+            while True:
+                try:
+                    data = os.read(self.master_fd, 1024).decode(errors='ignore')
+                    if data:
+                        self.output.push(self.strip_ansi(data))
+                    else:
+                        msg = f"OSError in {self.title}"
+                        break
+                except OSError:
+                    msg = f"{self.master_fd} unreadable in {self.title}"
                     break
-            except OSError:
-                msg = f"{self.master_fd} unreadable in {self.title}"
-                break
+        else:
+            while True:
+                try:
+                    if self.process.stdout is None:
+                        msg = f"No stdout for process in {self.title}"
+                        break
+                    data = self.process.stdout.readline()
+                    if not data:
+                        if self.process.poll() is not None:
+                            msg = f"process exited in {self.title}"
+                            break
+                        continue
+                    self.output.push(self.strip_ansi(data))
+                except Exception as exc:
+                    msg = f"Error reading stdout in {self.title}: {exc}"
+                    break
         logging.exception(msg)
         self.output.push(self.strip_ansi(msg))
+
 
 class Info(ui.dialog):
     def __init__(self, mapping: dict):
@@ -202,6 +304,7 @@ class Info(ui.dialog):
     async def __call__(self):
         self.open()
 
+
 class Main(ui.row):
     def __init__(self):
         super().__init__()
@@ -214,9 +317,7 @@ class Main(ui.row):
             with ui.column().classes('w-full justify-center items-center').props('dark') as waiting:
                 ui.label(f"Building: {os.path.abspath(args.src)}")
                 ui.spinner(type='bars', color='positive')
-            # === MODIFICA CHIAVE QUI (2/2) ===
-            # Rimuovi 'sicstus' dalla chiamata a run.cpu_bound
-            cmds = await run.cpu_bound(build, src=os.path.abspath(args.src), dali=os.path.abspath(args.dali))
+            cmds = await run.cpu_bound(build, src=os.path.abspath(args.src), dali=os.path.abspath(args.dali), prolog=args.prolog)
             self.remove(waiting)
         with self.grid:
             if cmds is not None:
@@ -232,6 +333,8 @@ class Main(ui.row):
                     logging.info(cmd)
                     InteractiveShell(cmd=cmd, title=title)
                     await asyncio.sleep(5)
+
+
 def alreadyopen():
     with ui.dialog().props('persistent') as dialog, ui.card().classes("flex justify-center items-center"):
         ui.icon('error', color='negative').classes('text-5xl')
@@ -277,20 +380,26 @@ async def index(client):
     with ui.card().classes("w-full flex justify-center items-center overflow-auto").props('dark'):
         Main()
     with ui.footer(elevated=True).classes("justify-center items-center"):
-        ui.label("Copyrights 2025 Ⓒ Aly Shmahell")
+        ui.label("Copyrights 2025 Aly Shmahell")
     @client.on_disconnect
     def _():
         active_sessions.discard(session_id)
         logging.info("GUI disconnected...")
-        p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
-        p.wait()
-    
+        if os.name != 'nt':
+            try:
+                p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
+                p.wait()
+            except Exception as e:
+                logging.exception(e)
+
+
 if __name__ in {"__main__", "__mp_main__"}:
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--src', type=str,       required=not os.environ.get('docker', False), default='/src', help="path to the MAS source code (like the example folder)")
-    argparser.add_argument('--dali', type=str,      required=not os.environ.get('docker', False), default='/dali', help="path to the dali directory")
-    argparser.add_argument('--sicstus', type=str,   required=not os.environ.get('docker', False), default='/sicstus', help="path to the sicstus directory")
+    argparser.add_argument('--src', type=str,       required=False, default='/src', help="path to the MAS source code (like the example folder)")
+    argparser.add_argument('--dali', type=str,      required=False, default='/dali', help="path to the dali directory")
+    argparser.add_argument('--prolog', '--sicstus', dest='prolog', type=str, required=False, default='swipl', help="path to the Prolog executable (e.g. swipl)")
     args      = argparser.parse_args()
+
     logging.basicConfig(
         level=logging.INFO,
         handlers=[
