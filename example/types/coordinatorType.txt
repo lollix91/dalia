@@ -5,7 +5,7 @@ t60.
 :- dynamic evacuated/1.
 :- dynamic responded/1.
 
-alarmE(E, L) :> assert(location(L)), evacuateA(E, L), equipA(E).
+alarmE(E, L) :> assert(location(L)), ask_chatgpt(E), evacuateA(E, L), equipA(E).
 
 equippedE(E) :> assert(equipment(E)).
 evacuatedE(L):> assert(evacuated(L)).

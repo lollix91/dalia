@@ -3,6 +3,7 @@ setlocal
 
 set "DALI="
 set "SRC="
+set "TOKEN="
 
 :parse_args
 if "%~1"=="" goto end_parse_args
@@ -12,6 +13,9 @@ if /I "%~1"=="--src" (
     shift
 ) else if /I "%~1"=="--dali" (
     set "DALI=%~2"
+    shift
+) else if /I "%~1"=="--token" (
+    set "TOKEN=%~2"
     shift
 ) else (
     echo Parametro sconosciuto: %~1
@@ -24,6 +28,7 @@ goto :parse_args
 
 echo "SRC: %SRC%"
 echo "DALI: %DALI%"
+if not "%TOKEN%"=="" echo "TOKEN: (impostato)"
 
 docker info > nul 2>&1
 if %ERRORLEVEL% neq 0 (
@@ -35,6 +40,8 @@ docker container prune -f
 
 set "src=%SRC%"
 set "dali=%DALI%"
+:: Impostiamo la variabile d'ambiente che Docker Compose leggerà
+set "OPENAI_API_KEY=%TOKEN%"
 
 echo Avvio dei container...
 docker compose down --remove-orphans

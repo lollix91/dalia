@@ -9,12 +9,93 @@ import logging
 import asyncio
 import tempfile
 import argparse
+import socket
 import threading
+# Removed: import requests
+import openai
 import subprocess
 from robohash import Robohash
 from nicegui import ui, background_tasks, run, app
 
+# --- CONFIGURAZIONE LLM BRIDGE ---
+LLM_PORT = 9000 
 
+def query_llm_service(prompt):
+    """Logica per chiamare l'LLM (OpenAI)"""
+    try:
+        # Recupera la chiave da argomento o variabile d'ambiente
+        api_key = args.openai_key or os.environ.get("OPENAI_API_KEY")
+        
+        # --- MODALITÀ SENZA LLM ---
+        # Se la chiave non c'è, non chiamiamo OpenAI.
+        # Ritorniamo una stringa innocua per non bloccare DALI.
+        if not api_key or api_key.strip() == "":
+            logging.info("Richiesta ricevuta ma LLM disabilitato (nessun token).")
+            return "LLM inactive: no token provided."
+
+        # --- CHIAMATA OPENAI (SOLO SE C'È LA CHIAVE) ---
+        client = openai.OpenAI(api_key=api_key)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[
+                {"role": "system", "content": "Sei un assistente per un sistema multi-agente. Rispondi in una sola frase."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100,
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        logging.error(f"OpenAI Exception: {e}")
+        return f"Errore API: {str(e)}"
+
+def llm_client_handler(conn, addr):
+    logging.info(f"LLM Bridge: Connessione da {addr}")
+    try:
+        data = conn.recv(4096).decode('utf-8')
+        if data:
+            clean_text = data.strip().rstrip('.')
+            logging.info(f"LLM Bridge: Richiesta -> {clean_text}")
+            
+            response = query_llm_service(clean_text)
+            
+            # Formattazione per Prolog: rimuove apici e caratteri che rompono la sintassi
+            safe_response = response.replace("'", "").replace('"', "").replace("\n", " ")
+            prolog_msg = f"'{safe_response}'.\n"
+            
+            conn.sendall(prolog_msg.encode('utf-8'))
+    except Exception as e:
+        logging.error(f"LLM Bridge Error: {e}")
+    finally:
+        conn.close()
+
+def run_server_loop():
+    """Il loop infinito del server TCP"""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    try:
+        server.bind(('127.0.0.1', LLM_PORT))
+        server.listen(5)
+        logging.info(f"✅ LLM SERVER PRONTO SU 127.0.0.1:{LLM_PORT}")
+        
+        while True:
+            try:
+                conn, addr = server.accept()
+                threading.Thread(target=llm_client_handler, args=(conn, addr), daemon=True).start()
+            except Exception as inner_e:
+                logging.error(f"Errore connessione: {inner_e}")
+                
+    except OSError:
+        logging.warning(f"⚠️ Porta {LLM_PORT} occupata. Probabile reload di NiceGUI. Il server dovrebbe essere già attivo.")
+
+def start_llm_background():
+    """Avvia il thread in background all'avvio di NiceGUI"""
+    threading.Thread(target=run_server_loop, daemon=True).start()
+
+# --- CLASSI DI UTILITÀ DALIA ---
 class AnsiStrip:
     def __init__(self):
         self.ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
@@ -27,97 +108,82 @@ def has_port(text: str, port: int) -> bool:
 
 def port_busy(port):
     result = subprocess.run(['netstat', '-an'], capture_output=True, text=True)
-    logging.info(f"scanning for port {port}")
     return has_port(result.stdout, port)
 
 def load_src(dirpath):
-    result      = {
-        "agents": dict(),
-        "comm": ""
-    }
+    result = {"agents": dict(), "comm": ""}
     instancespath = os.path.join(dirpath, 'instances.json')
     try:
         with open(instancespath, 'r') as f:
             instances = json.loads(f.read())
-    except Exception as e:
-        logging.exception(f"{instancespath} does not exist")
-        return {} 
+    except: return {} 
+    
     try:
         for name, type in instances.items():
             path = os.path.join(dirpath, 'types', f'{type}.txt') 
-            assert os.path.isfile(path)
-            assert name not in ['user', 'server']
             with open(path, 'r') as f:
                 code = f.read().strip()
-            result["agents"][name] = {
-                "type": type,
-                "code": code
-            }
-    except Exception as e:
-        logging.exception(f"problem with instancess in {instancespath}")
-        return {} 
+            result["agents"][name] = {"type": type, "code": code}
+    except: return {} 
+    
     commpath = os.path.join(dirpath, 'conf', f'communication.con')
     try:
-        assert os.path.isfile(commpath)
         with open(commpath, 'r') as f:
-            code = f.read().strip()
-            result["comm"] = code
-    except Exception as e:
-        logging.exception(f"problem with file {commpath}")
-        return {} 
+            result["comm"] = f.read().strip()
+    except: return {} 
     return result
 
 def rmdir(path):
     if os.path.exists(path) and os.path.isdir(path):
         for root, dirs, files in os.walk(path, topdown=False):
-            for file in files:
-                os.remove(os.path.join(root, file))
-            for dir in dirs:
-                os.rmdir(os.path.join(root, dir))
+            for file in files: os.remove(os.path.join(root, file))
+            for dir in dirs: os.rmdir(os.path.join(root, dir))
         os.rmdir(path)
 
 def build(*, src, dali):
-    src = load_src(src)
-    if not src:
-        return
+    src_data = load_src(src)
+    if not src_data: return
+    
     workdir = tempfile.mkdtemp()
-    p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
-    p.wait()
-    dali     = os.path.join(dali, 'src')
-    # Il nome del comando è sicstus perché è nel PATH di sistema del container
-    sicstus  = 'sicstus'
+    subprocess.run("pkill -9 sicstus 2>/dev/null || true", shell=True)
+    
+    dali_src = os.path.join(dali, 'src')
+    sicstus = 'sicstus'
+    
     rmdir(workdir)
     agentsdir = os.path.join(workdir, 'agents')
     setupsdir = os.path.join(workdir, 'setups')
-    confdir   = os.path.join(workdir, 'conf')
-    logdir    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log')
+    confdir = os.path.join(workdir, 'conf')
+    logdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log')
+    
     rmdir(logdir)
-    os.makedirs(logdir, exist_ok=True)
-    os.makedirs(setupsdir, exist_ok=True)
-    os.makedirs(agentsdir, exist_ok=True)
-    os.makedirs(confdir, exist_ok=True)
+    for d in [logdir, setupsdir, agentsdir, confdir]:
+        os.makedirs(d, exist_ok=True)
+        
     with open(os.path.join(confdir, f'communication.con'), 'w') as f:
-        f.write(src["comm"])
+        f.write(src_data["comm"])
+        
     port = 3010
-    logging.info(f"waiting for port {port} to be free")
-    while port_busy(port):
-        time.sleep(1)
-    time.sleep(5)
-    cmds  = {
-        "server": f"{sicstus} --noinfo -l {os.path.join(dali, 'active_server_wi.pl')} --goal go."
-    }
-    for name in src["agents"]:
+    while port_busy(port): time.sleep(1)
+    time.sleep(2)
+    
+    cmds = {"server": f"{sicstus} --noinfo -l {os.path.join(dali_src, 'active_server_wi.pl')} --goal go."}
+    
+    for name in src_data["agents"]:
         with open(os.path.join(agentsdir, f'{name}.txt'), 'w') as f:
-            f.write(src['agents'][name]["code"])
+            f.write(src_data['agents'][name]["code"])
         os.chmod(os.path.join(agentsdir, f'{name}.txt'), 0o755)
-        setup = f"agent('{agentsdir}/{name}', '{name}','no',italian,['{confdir}/communication'],['{dali}/communication_fipa','{dali}/learning','{dali}/planasp'],'no','{dali}/onto/dali_onto.txt',[])."
+        
+        setup = f"agent('{agentsdir}/{name}', '{name}','no',italian,['{confdir}/communication'],['{dali_src}/communication_fipa','{dali_src}/learning','{dali_src}/planasp'],'no','{dali_src}/onto/dali_onto.txt',[])."
+        
         with open(os.path.join(setupsdir, f'{name}.txt'), 'w') as f:
             f.write(setup)
         os.chmod(os.path.join(setupsdir, f'{name}.txt'), 0o755)
-        cmds[f"{name}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dali, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
-    cmds["user"] = f"{sicstus} --noinfo -l {os.path.join(dali, 'active_user_wi.pl')} --goal user_interface."
+        
+        cmds[f"{name}"] = " ".join([sicstus, '--noinfo', '-l', os.path.join(dali_src, 'active_dali_wi.pl'), '--goal', f'"start0(\'{os.path.join(setupsdir, f'{name}.txt')}\')."'])
+        
+    cmds["user"] = f"{sicstus} --noinfo -l {os.path.join(dali_src, 'active_user_wi.pl')} --goal user_interface."
     return cmds
-
 
 class InteractiveShell(ui.element):
     def __init__(self, *, cmd: str, title: str, value: str ='', _client = None):
@@ -127,34 +193,21 @@ class InteractiveShell(ui.element):
             self.title = title
             self.strip_ansi = AnsiStrip()
             self.master_fd, self.slave_fd = pty.openpty()
-            self.process = subprocess.Popen(
-                shlex.split(cmd),
-                stdin=self.slave_fd,
-                stdout=self.slave_fd,
-                stderr=self.slave_fd,
-                text=True,
-                bufsize=0,
-            )
+            self.process = subprocess.Popen(shlex.split(cmd), stdin=self.slave_fd, stdout=self.slave_fd, stderr=self.slave_fd, text=True, bufsize=0)
             os.close(self.slave_fd)
+            
             rh = Robohash(title)
-            if title == 'user':
-                roboset='set5'
-            elif 'agent' in title:
-                roboset='set1'
-            else:
-                roboset='set2'
+            roboset = 'set5' if title == 'user' else ('set1' if 'agent' in title else 'set2')
             rh.assemble(roboset=roboset)
+            
             with ui.row(align_items='center'):
-                with ui.avatar():
-                    ui.image(rh.img)
+                with ui.avatar(): ui.image(rh.img)
                 ui.label(title).classes("text-negative")
-            self.output = ui.log().classes(
-                "text-green-500 overflow-y-auto break-all"
-            ).style('white-space: pre-wrap;')
-            self.input = ui.input(value=value, placeholder='?-').on('keydown.enter', self.on_enter).classes(
-                "rounded outlined dense"
-            ).props('input-style="color: #87CEEB" input-class="font-mono" clearable')
+            
+            self.output = ui.log().classes("text-green-500 overflow-y-auto break-all").style('white-space: pre-wrap;')
+            self.input = ui.input(value=value, placeholder='?-').on('keydown.enter', self.on_enter).classes("rounded outlined dense").props('input-style="color: #87CEEB" input-class="font-mono" clearable')
             threading.Thread(target=self.read_output, daemon=True).start()
+
     async def on_enter(self, e):
         cmd = e.sender.value
         e.sender.value = ""
@@ -162,45 +215,29 @@ class InteractiveShell(ui.element):
             self.output.push("[process exited]")
             return
         os.write(self.master_fd, (cmd + "\n").encode())
+
     def read_output(self):
         while True:
             try:
                 data = os.read(self.master_fd, 1024).decode(errors='ignore')
-                if data:
-                    self.output.push(self.strip_ansi(data))
-                else:
-                    msg = f"OSError in {self.title}"
-                    break
-            except OSError:
-                msg = f"{self.master_fd} unreadable in {self.title}"
-                break
-        logging.exception(msg)
-        self.output.push(self.strip_ansi(msg))
+                if data: self.output.push(self.strip_ansi(data))
+                else: break
+            except OSError: break
 
 class Info(ui.dialog):
     def __init__(self, mapping: dict):
         super().__init__(value=False)
         with self, ui.card().classes('w-[100vw]'):
             ui.icon('close', color='negative', size='lg').props("outlined").on('click', self.close)
-            ui.label('LICENSES').tailwind.text_color('orange-600')
             with ui.list().classes("w-full"):
-                for title, path  in mapping.items():
-                    content = ''
+                for title, path in mapping.items():
                     try:
-                        with open(path, 'r') as f:
-                            content = f.read()
-                    except Exception as e:
-                        logging.exception(e)
-                        content = ''
-                    if not content:
-                        continue
-                    with ui.item():
-                        with ui.expansion(title).classes('w-full') as exp:
+                        with open(path, 'r') as f: content = f.read()
+                    except: content = ''
+                    if content:
+                        with ui.item(), ui.expansion(title).classes('w-full') as exp:
                             exp.tailwind.text_color('pink-400')
-                            ui.markdown(content=content).tailwind.text_color('black')
-                    ui.separator()
-    async def __call__(self):
-        self.open()
+                            ui.markdown(content=content)
 
 class Main(ui.row):
     def __init__(self):
@@ -214,94 +251,42 @@ class Main(ui.row):
             with ui.column().classes('w-full justify-center items-center').props('dark') as waiting:
                 ui.label(f"Building: {os.path.abspath(args.src)}")
                 ui.spinner(type='bars', color='positive')
-            # === MODIFICA CHIAVE QUI (2/2) ===
-            # Rimuovi 'sicstus' dalla chiamata a run.cpu_bound
             cmds = await run.cpu_bound(build, src=os.path.abspath(args.src), dali=os.path.abspath(args.dali))
             self.remove(waiting)
         with self.grid:
-            if cmds is not None:
+            if cmds:
                 server = cmds.pop('server')
-                logging.info(server)
                 InteractiveShell(cmd=server, title='server')
                 await asyncio.sleep(5)
                 user = cmds.pop('user')
-                logging.info(user)
                 InteractiveShell(cmd=user, title='user', value="")
                 await asyncio.sleep(5)
                 for title, cmd in cmds.items():
-                    logging.info(cmd)
                     InteractiveShell(cmd=cmd, title=title)
                     await asyncio.sleep(5)
-def alreadyopen():
-    with ui.dialog().props('persistent') as dialog, ui.card().classes("flex justify-center items-center"):
-        ui.icon('error', color='negative').classes('text-5xl')
-        ui.label('DALIA is already open somewhere else')
-    dialog.open()
-active_sessions = set()
+
 @ui.page("/")
 async def index(client):
-    session_id = client.id
-    if active_sessions and client.id not in active_sessions:
-        alreadyopen()
-        return
-    active_sessions.add(session_id)
     ui.colors(primary='#000')
-    ui.add_css(r'''
-                a:link, a:visited {color: inherit !important; text-decoration: none; font-weight: 500}
-                ::-webkit-scrollbar {
-                width: 20px;
-                }
-                ::-webkit-scrollbar-track {
-                box-shadow: inset 0 0 5px rgb(255 255 255 / 10%);
-                border-radius: 10px;
-                }
-                ::-webkit-scrollbar-thumb {
-                background: linear-gradient(45deg, #94a3b8, #a8a29e); 
-                border-radius: 10px;
-                }
-                body {
-                background: #1D1D1D
-                }
-    ''')
-    ui.query('.q-page').classes('flex')
-    ui.query('.nicegui-content').classes('w-full')
+    ui.add_css(r'body { background: #1D1D1D; }')
     with ui.header(elevated=True).classes("justify-between items-center"):
-        with ui.avatar():
-            ui.image(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'))
         ui.label("DALIA").style('color: #FFFFFF; font-size: 200%; font-weight: 900')
-        info = Info({
-            'DALIA': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LICENSE'),
-            'DALI': os.path.join(os.path.abspath(args.dali), 'LICENSE')
-        })
-        ui.icon('info', size='lg').on('click', info)
     with ui.card().classes("w-full flex justify-center items-center overflow-auto").props('dark'):
         Main()
-    with ui.footer(elevated=True).classes("justify-center items-center"):
-        ui.label("Copyrights 2025 Ⓒ Aly Shmahell")
-    @client.on_disconnect
-    def _():
-        active_sessions.discard(session_id)
-        logging.info("GUI disconnected...")
-        p = subprocess.Popen("pkill -9 sicstus 2>/dev/null || true", shell=True)
-        p.wait()
-    
+
 if __name__ in {"__main__", "__mp_main__"}:
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--src', type=str,       required=not os.environ.get('docker', False), default='/src', help="path to the MAS source code (like the example folder)")
-    argparser.add_argument('--dali', type=str,      required=not os.environ.get('docker', False), default='/dali', help="path to the dali directory")
-    argparser.add_argument('--sicstus', type=str,   required=not os.environ.get('docker', False), default='/sicstus', help="path to the sicstus directory")
-    args      = argparser.parse_args()
-    logging.basicConfig(
-        level=logging.INFO,
-        handlers=[
-            logging.StreamHandler()
-        ]
-    )
-    ui.run(
-        title='DALIA', 
-        favicon=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'DALI_logo.png'),
-        storage_secret=uuid.uuid4().hex,
-        host="0.0.0.0", 
-        port=8118,
-        reconnect_timeout=300
-    )
+    argparser.add_argument('--src', type=str, required=not os.environ.get('docker', False), default='/src')
+    argparser.add_argument('--dali', type=str, required=not os.environ.get('docker', False), default='/dali')
+    argparser.add_argument('--sicstus', type=str, required=not os.environ.get('docker', False), default='/sicstus')
+    
+    # Prende la chiave dalla variabile d'ambiente (se settata da run.bat)
+    argparser.add_argument('--openai_key', type=str, default=os.environ.get('OPENAI_API_KEY'))
+    
+    args = argparser.parse_args()
+    logging.basicConfig(level=logging.INFO)
+
+    # Avvia il server LLM (che sarà "muto" se non c'è la chiave)
+    app.on_startup(start_llm_background)
+    
+    ui.run(title='DALIA', host="0.0.0.0", port=8118, reconnect_timeout=300)

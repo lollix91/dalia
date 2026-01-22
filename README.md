@@ -1,35 +1,78 @@
 # Dalia
-a containerized launcher with a GUI for multi-agent-systems written in [DALI](https://github.com/AAAI-DISIM-UnivAQ/DALI).
 
-### Pre-Requisites:
+A containerized launcher with a GUI for multi-agent systems written in
+[DALI](https://github.com/AAAI-DISIM-UnivAQ/DALI).
 
-1. Install [docker](https://docs.docker.com/engine/install/)
+---
+
+## Pre-requisites
+
+1. Install [Docker](https://docs.docker.com/engine/install/)
 2. Clone [DALI](https://github.com/AAAI-DISIM-UnivAQ/DALI)
-    - check the compatibility table [DALI-DALIA Compatibility](https://github.com/lollix91/dalia/blob/main/compatibility.md)
-    - e.g. 
-    ```sh
-    git clone --branch 2024.10 --depth 1 https://github.com/AAAI-DISIM-UnivAQ/DALI
-    ```
+   - Check the compatibility table:  
+     [DALI–DALIA Compatibility](https://github.com/lollix91/dalia/blob/main/compatibility.md)
+   - Example:
+     ```sh
+     git clone --branch 2026.01 --depth 1 https://github.com/AAAI-DISIM-UnivAQ/DALI
+     ```
 
-### Installation 
-1. Open a cmd shell (Command Prompt)
+---
+
+## Installation
+
+1. Open a command shell (Command Prompt)
 2. Clone [DALIA](https://github.com/lollix91/dalia)
-    - check the compatibility table [DALI-DALIA Compatibility](https://github.com/lollix91/dalia/blob/main/compatibility.md)
-    - e.g. 
-    ```sh
-    git clone --branch 2025.10.23 --depth 1 https://github.com/lollix91/dalia
-    or
-    git clone --depth 1 https://github.com/lollix91/dalia
-    ```
-3. Navigate into the cloned repo:
-```sh
-cd dalia
-```
-4. Insert your Sicstus-Prolog for Linux license information in the "install_sicstus.exp" file
+   - Check the compatibility table:  
+     [DALI–DALIA Compatibility](https://github.com/lollix91/dalia/blob/main/compatibility.md)
+   - Examples:
+     ```sh
+     git clone --branch 2026.01.22 --depth 1 https://github.com/lollix91/dalia
+     ```
+     or
+     ```sh
+     git clone --depth 1 https://github.com/lollix91/dalia
+     ```
+3. Navigate into the cloned repository:
+   ```sh
+   cd dalia
+   ```
+4. Insert your **SICStus Prolog (Linux)** license information into the file:
+   ```
+   install_sicstus.exp
+   ```
 
-### Usage
+---
+
+## Usage
+
+To launch the system, use the following command structure:
+
 ```sh
-./run --dali <PATH-TO-DALI-DIRECTORY> --src <PATH-TO-MAS-DIRECTORY> 
+./run --dali <PATH-TO-DALI-DIRECTORY> --src <PATH-TO-MAS-DIRECTORY> [--token <OPENAI_API_KEY>]
 ```
 
-- `PATH-TO-MAS-DIRECTORY` is the path to the multi agent system you've written using [DALI](https://github.com/AAAI-DISIM-UnivAQ/DALI), you can use the `example` directory found in this repository in `PATH-TO-MAS-DIRECTORY` when getting started.
+- `PATH-TO-MAS-DIRECTORY` is the path to the multi-agent system written in DALI.
+- You can use the `example` directory provided in this repository when getting started.
+
+---
+
+### Running with LLM Support (OpenAI)
+
+To enable the LLM Bridge features (e.g. allowing agents to consult ChatGPT),
+provide your OpenAI API key using the `--token` parameter:
+
+```sh
+./run --dali ../DALI --src example --token sk-proj-xxxxxxxxxxxxxxxxxxxx
+```
+
+---
+
+### Running Offline (No LLM)
+
+If you omit the `--token` parameter, the system will start in **offline mode**.
+Calls to the LLM service will receive a default *\"LLM disabled\"* response without
+contacting external APIs.
+
+```sh
+./run --dali ../DALI --src example
+```
