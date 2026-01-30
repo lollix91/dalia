@@ -9,22 +9,19 @@ t60.
 
 alarmE(E, L) :> 
     assert(location(L)), 
-    
     acquire_knowledge(E, Fact), 
-    
     handle_ai_suggestion(Fact),
-    
     assert(Fact),
-    
     evacuateA(E, L), 
     equipA(E).
 
-
-handle_ai_suggestion(suggestion(Action)) :-
+handle_ai_suggestion(Fact) :-
+    arg(1, Fact, Action),
     write('!!! AI SUGGERISCE: '), write(Action), nl.
 
-handle_ai_suggestion(AltroFatto) :-
-    write('... AI ha risposto con: '), write(AltroFatto), nl.
+handle_ai_suggestion(Fact) :-
+    write('... Pattern matching fallito. Analisi del termine: '), 
+    write_canonical(Fact), nl.
 
 equippedE(E) :> assert(equipment(E)).
 evacuatedE(L):> assert(evacuated(L)).

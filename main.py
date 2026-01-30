@@ -11,33 +11,28 @@ import tempfile
 import argparse
 import socket
 import threading
-# Removed: import requests
 import openai
 import subprocess
 from robohash import Robohash
 from nicegui import ui, background_tasks, run, app
 
-# --- CONFIGURAZIONE LLM BRIDGE ---
 LLM_PORT = 9000 
 
 def query_llm_service(prompt):
-    """Logica per chiamare l'LLM (OpenAI)"""
     try:
         api_key = args.openai_key or os.environ.get("OPENAI_API_KEY")
         
         if not api_key or api_key.strip() == "":
             logging.info(f"Ricevuta richiesta '{prompt[:10]}...' ma LLM disabilitato.")
-            # Default fallback in formato Prolog se offline
-            return "advice(stay_safe)." 
+            return "suggestion(stay_safe)" 
 
         client = openai.OpenAI(api_key=api_key)
         
-        # --- MODIFICA PROMPT: FORZIAMO L'OUTPUT PROLOG ---
         system_instruction = (
             "Sei un modulo logico per un agente DALI. "
-            "Il tuo output deve essere UNICAMENTE un fatto Prolog valido terminato da punto. "
+            "Il tuo output deve essere UNICAMENTE un fatto Prolog valido. "
             "Nessun testo, nessun markdown, nessuna spiegazione. "
-            "Esempio: suggestion(evacuate_immediately)."
+            "Esempio: suggestion(evacuate_immediately)"
         )
 
         response = client.chat.completions.create(
@@ -47,20 +42,20 @@ def query_llm_service(prompt):
                 {"role": "user", "content": f"Context: {prompt}. What is the best strategic fact?"}
             ],
             max_tokens=50,
-            temperature=0.3 # Bassa temperatura per essere più deterministici
+            temperature=0.3
         )
         
         content = response.choices[0].message.content.strip()
         
-        # Pulizia extra: rimuove eventuali backticks del markdown se l'LLM disubbidisce
         content = content.replace("```prolog", "").replace("```", "").strip()
-        
+        if content.endswith('.'):
+            content = content[:-1]
+            
         return content
         
     except Exception as e:
         logging.error(f"OpenAI Exception: {e}")
-        # Fallback di errore in formato Prolog
-        return "error(api_failure)."
+        return "error(api_failure)"
 
 def llm_client_handler(conn, addr):
     logging.info(f"LLM Bridge: Connessione da {addr}")
@@ -72,9 +67,8 @@ def llm_client_handler(conn, addr):
             
             response = query_llm_service(clean_text)
             
-            # Formattazione per Prolog: rimuove apici e caratteri che rompono la sintassi
             safe_response = response.replace("'", "").replace('"', "").replace("\n", " ")
-            prolog_msg = f"'{safe_response}'.\n"
+            prolog_msg = f"{safe_response}.\n"
             
             conn.sendall(prolog_msg.encode('utf-8'))
     except Exception as e:
@@ -83,7 +77,6 @@ def llm_client_handler(conn, addr):
         conn.close()
 
 def run_server_loop():
-    """Il loop infinito del server TCP"""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     
@@ -100,13 +93,11 @@ def run_server_loop():
                 logging.error(f"Errore connessione: {inner_e}")
                 
     except OSError:
-        logging.warning(f"⚠️ Porta {LLM_PORT} occupata. Probabile reload di NiceGUI. Il server dovrebbe essere già attivo.")
+        logging.warning(f"⚠️ Porta {LLM_PORT} occupata.")
 
 def start_llm_background():
-    """Avvia il thread in background all'avvio di NiceGUI"""
     threading.Thread(target=run_server_loop, daemon=True).start()
 
-# --- CLASSI DI UTILITÀ DALIA ---
 class AnsiStrip:
     def __init__(self):
         self.ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
@@ -291,13 +282,11 @@ if __name__ in {"__main__", "__mp_main__"}:
     argparser.add_argument('--dali', type=str, required=not os.environ.get('docker', False), default='/dali')
     argparser.add_argument('--sicstus', type=str, required=not os.environ.get('docker', False), default='/sicstus')
     
-    # Prende la chiave dalla variabile d'ambiente (se settata da run.bat)
     argparser.add_argument('--openai_key', type=str, default=os.environ.get('OPENAI_API_KEY'))
     
     args = argparser.parse_args()
     logging.basicConfig(level=logging.INFO)
 
-    # Avvia il server LLM (che sarà "muto" se non c'è la chiave)
     app.on_startup(start_llm_background)
     
     ui.run(title='DALIA', host="0.0.0.0", port=8118, reconnect_timeout=300)
