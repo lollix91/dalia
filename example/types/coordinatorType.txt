@@ -10,19 +10,21 @@ t60.
 alarmE(E, L) :> 
     assert(location(L)), 
     
-    acquire_knowledge(E), 
+    acquire_knowledge(E, Fact), 
     
-    check_ai_suggestion(E),
+    handle_ai_suggestion(Fact),
+    
+    assert(Fact),
     
     evacuateA(E, L), 
     equipA(E).
 
-check_ai_suggestion(_) :-
-    suggestion(Action),
-    write('!!! AI HINT: '), write(Action), nl.
 
-check_ai_suggestion(_) :-
-    write('... Nessun suggerimento specifico trovato in memoria.'), nl.
+handle_ai_suggestion(suggestion(Action)) :-
+    write('!!! AI SUGGERISCE: '), write(Action), nl.
+
+handle_ai_suggestion(AltroFatto) :-
+    write('... AI ha risposto con: '), write(AltroFatto), nl.
 
 equippedE(E) :> assert(equipment(E)).
 evacuatedE(L):> assert(evacuated(L)).
