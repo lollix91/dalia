@@ -13,7 +13,7 @@ A containerized launcher with a GUI for multi-agent systems written in
      [DALI–DALIA Compatibility](https://github.com/lollix91/dalia/blob/main/compatibility.md)
    - Example:
      ```sh
-     git clone --branch v2026.01 --depth 1 https://github.com/AAAI-DISIM-UnivAQ/DALI
+     git clone --branch v2026.01a --depth 1 https://github.com/AAAI-DISIM-UnivAQ/DALI
      ```
 
 ---
@@ -26,7 +26,7 @@ A containerized launcher with a GUI for multi-agent systems written in
      [DALI–DALIA Compatibility](https://github.com/lollix91/dalia/blob/main/compatibility.md)
    - Examples:
      ```sh
-     git clone --branch 2026.01.23 --depth 1 https://github.com/lollix91/dalia
+     git clone --branch 2026.01.30 --depth 1 https://github.com/lollix91/dalia
      ```
      or
      ```sh
