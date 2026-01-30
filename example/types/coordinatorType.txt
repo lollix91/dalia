@@ -4,8 +4,25 @@ t60.
 :- dynamic equipment/1.
 :- dynamic evacuated/1.
 :- dynamic responded/1.
+:- dynamic suggestion/1. 
+:- dynamic risk_level/1.
 
-alarmE(E, L) :> assert(location(L)), ask_chatgpt(E), evacuateA(E, L), equipA(E).
+alarmE(E, L) :> 
+    assert(location(L)), 
+    
+    acquire_knowledge(E), 
+    
+    check_ai_suggestion(E),
+    
+    evacuateA(E, L), 
+    equipA(E).
+
+check_ai_suggestion(_) :-
+    suggestion(Action),
+    write('!!! AI HINT: '), write(Action), nl.
+
+check_ai_suggestion(_) :-
+    write('... Nessun suggerimento specifico trovato in memoria.'), nl.
 
 equippedE(E) :> assert(equipment(E)).
 evacuatedE(L):> assert(evacuated(L)).

@@ -23,33 +23,44 @@ LLM_PORT = 9000
 def query_llm_service(prompt):
     """Logica per chiamare l'LLM (OpenAI)"""
     try:
-        # Recupera la chiave da argomento o variabile d'ambiente
         api_key = args.openai_key or os.environ.get("OPENAI_API_KEY")
         
-        # --- MODALITÀ SENZA LLM ---
-        # Se la chiave non c'è, non chiamiamo OpenAI.
-        # Ritorniamo una stringa innocua per non bloccare DALI.
         if not api_key or api_key.strip() == "":
-            logging.info("Richiesta ricevuta ma LLM disabilitato (nessun token).")
-            return "LLM inactive: no token provided."
+            logging.info(f"Ricevuta richiesta '{prompt[:10]}...' ma LLM disabilitato.")
+            # Default fallback in formato Prolog se offline
+            return "advice(stay_safe)." 
 
-        # --- CHIAMATA OPENAI (SOLO SE C'È LA CHIAVE) ---
         client = openai.OpenAI(api_key=api_key)
         
+        # --- MODIFICA PROMPT: FORZIAMO L'OUTPUT PROLOG ---
+        system_instruction = (
+            "Sei un modulo logico per un agente DALI. "
+            "Il tuo output deve essere UNICAMENTE un fatto Prolog valido terminato da punto. "
+            "Nessun testo, nessun markdown, nessuna spiegazione. "
+            "Esempio: suggestion(evacuate_immediately)."
+        )
+
         response = client.chat.completions.create(
             model="gpt-4o-mini", 
             messages=[
-                {"role": "system", "content": "Sei un assistente per un sistema multi-agente. Rispondi in una sola frase."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": f"Context: {prompt}. What is the best strategic fact?"}
             ],
-            max_tokens=100,
-            temperature=0.7
+            max_tokens=50,
+            temperature=0.3 # Bassa temperatura per essere più deterministici
         )
-        return response.choices[0].message.content
+        
+        content = response.choices[0].message.content.strip()
+        
+        # Pulizia extra: rimuove eventuali backticks del markdown se l'LLM disubbidisce
+        content = content.replace("```prolog", "").replace("```", "").strip()
+        
+        return content
         
     except Exception as e:
         logging.error(f"OpenAI Exception: {e}")
-        return f"Errore API: {str(e)}"
+        # Fallback di errore in formato Prolog
+        return "error(api_failure)."
 
 def llm_client_handler(conn, addr):
     logging.info(f"LLM Bridge: Connessione da {addr}")
