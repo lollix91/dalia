@@ -1,0 +1,8 @@
+{
+    "soil_sensor": "soilSensorType",
+    "weather_monitor": "weatherMonitorType",
+    "crop_advisor": "cropAdvisorType",
+    "irrigation_controller": "irrigationControllerType",
+    "farmer_agent": "farmerAgentType",
+    "logger": "agriLoggerType"
+}

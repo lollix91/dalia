@@ -1,0 +1,10 @@
+t60.
+
+soil_readingE(M, Ph, F) :> write('LOG [SOIL] Moisture: '), write(M), write(' pH: '), write(Ph), write(' Field: '), write(F), nl.
+soil_normalE(M, Ph, F) :> write('LOG [SOIL OK] Moisture: '), write(M), write(' pH: '), write(Ph), write(' Field: '), write(F), nl.
+weather_readingE(T, H, Fc) :> write('LOG [WEATHER] Temp: '), write(T), write(' Humidity: '), write(H), write(' Forecast: '), write(Fc), nl.
+actionE(Type, Field) :> write('LOG [ACTION] '), write(Type), write(' at '), write(Field), nl.
+actionE(Type, Detail, Field) :> write('LOG [ACTION] '), write(Type), write(' '), write(Detail), write(' at '), write(Field), nl.
+irrigation_startedE(Field) :> write('LOG [IRRIGATION] Started at '), write(Field), nl.
+irrigation_reducedE(Field) :> write('LOG [IRRIGATION] Reduced at '), write(Field), nl.
+irrigation_completedE(State, Field) :> write('LOG [IRRIGATION] Completed '), write(State), write(' at '), write(Field), nl.

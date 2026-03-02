@@ -1,0 +1,24 @@
+t60.
+
+:- dynamic weather_state/3.
+
+weather_updateE(Temp, Humidity, Forecast) :> 
+    \+ weather_state(_,_,_), 
+    assert(weather_state(Temp, Humidity, Forecast)), 
+    write('>>> WEATHER received: T='), write(Temp), write(' H='), write(Humidity), write(' F='), write(Forecast), nl, !.
+
+weather_updateE(Temp, Humidity, Forecast) :> 
+    weather_state(_,_,_), 
+    retract(weather_state(_,_,_)), 
+    assert(weather_state(Temp, Humidity, Forecast)), 
+    write('>>> WEATHER updated: T='), write(Temp), write(' H='), write(Humidity), write(' F='), write(Forecast), nl.
+
+weather_risk(Temp, Humidity, Forecast) :- 
+    weather_state(Temp, Humidity, Forecast), 
+    (Temp > 38 ; Temp < 2 ; Humidity < 20 ; Forecast = storm).
+
+weather_riskI(Temp, Humidity, Forecast) :> 
+    messageA(crop_advisor, send_message(weather_alert(Temp, Humidity, Forecast), Me)), 
+    retractall(weather_state(_,_,_)).
+
+logA(X) :> messageA(logger, send_message(X, Me)).

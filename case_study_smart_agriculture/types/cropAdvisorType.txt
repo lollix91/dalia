@@ -1,0 +1,82 @@
+t60.
+
+:- dynamic pending_soil/3.
+:- dynamic pending_weather/3.
+:- dynamic suggestion/1.
+:- dynamic risk_level/1.
+
+soil_reportE(Moisture, Ph, Field) :> 
+    assert(pending_soil(Moisture, Ph, Field)),
+    build_context(Context),
+    acquire_knowledge(Context, Fact),
+    handle_ai_suggestion(Fact),
+    assert(Fact),
+    decide_action(Field).
+
+weather_alertE(Temp, Humidity, Forecast) :> 
+    assert(pending_weather(Temp, Humidity, Forecast)),
+    build_context(Context),
+    acquire_knowledge(Context, Fact),
+    handle_ai_suggestion(Fact),
+    assert(Fact),
+    decide_action(all_fields).
+
+to_atom(X, A) :- number(X), !, number_chars(X, Cs), atom_chars(A, Cs).
+to_atom(X, X) :- atom(X).
+
+build_context(Context) :-
+    (pending_soil(M, P, F) -> 
+        to_atom(M, MA), to_atom(P, PA), to_atom(F, FA),
+        atom_concat('soil moisture ', MA, S1),
+        atom_concat(S1, ' pH ', S2),
+        atom_concat(S2, PA, S3),
+        atom_concat(S3, ' field ', S4),
+        atom_concat(S4, FA, Context)
+    ;
+    pending_weather(T, H, Fc) -> 
+        to_atom(T, TA), to_atom(H, HA), to_atom(Fc, FcA),
+        atom_concat('temperature ', TA, S1),
+        atom_concat(S1, ' humidity ', S2),
+        atom_concat(S2, HA, S3),
+        atom_concat(S3, ' forecast ', S4),
+        atom_concat(S4, FcA, Context)
+    ;
+        Context = 'unknown_situation'
+    ).
+
+handle_ai_suggestion(Fact) :-
+    arg(1, Fact, Action),
+    write('>>> AI RECOMMENDS: '), write(Action), nl.
+
+handle_ai_suggestion(Fact) :-
+    write('>>> AI response (raw): '), 
+    write_canonical(Fact), nl.
+
+decide_action(Field) :-
+    suggestion(irrigate),
+    messageA(irrigation_controller, send_message(irrigate(Field), Me)),
+    write('>>> ACTION: irrigate at '), write(Field), nl,
+    retract(pending_soil(_,_,_)),
+    retract(suggestion(irrigate)).
+
+decide_action(Field) :-
+    suggestion(reduce_water),
+    messageA(irrigation_controller, send_message(reduce_water(Field), Me)),
+    write('>>> ACTION: reduce_water at '), write(Field), nl,
+    retract(pending_soil(_,_,_)),
+    retract(suggestion(reduce_water)).
+
+decide_action(Field) :-
+    suggestion(X),
+    messageA(farmer_agent, send_message(advisory(X, Field), Me)),
+    write('>>> ACTION: advisory '), write(X), write(' at '), write(Field), nl,
+    (pending_soil(_,_,_) -> retract(pending_soil(_,_,_)) ; true),
+    (pending_weather(_,_,_) -> retract(pending_weather(_,_,_)) ; true),
+    retract(suggestion(X)).
+
+decide_action(Field) :-
+    write('>>> ACTION: no_suggestion_matched at '), write(Field), nl,
+    (pending_soil(_,_,_) -> retract(pending_soil(_,_,_)) ; true),
+    (pending_weather(_,_,_) -> retract(pending_weather(_,_,_)) ; true).
+
+logA(X) :> messageA(logger, send_message(X, Me)).
