@@ -1,0 +1,9 @@
+t60.
+
+advisoryE(Action, Field) :> 
+    write('>>> FARMER NOTIFIED - Action: '), write(Action), 
+    write(' for field: '), write(Field), nl.
+
+statusE(State, Field) :> 
+    write('>>> FARMER STATUS UPDATE - '), write(State), 
+    write(' at field: '), write(Field), nl.

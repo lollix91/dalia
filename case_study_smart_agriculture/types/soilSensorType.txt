@@ -1,0 +1,32 @@
+t60.
+
+:- dynamic soil_state/3.
+
+read_soilE(Moisture, Ph, Field) :> 
+    \+ soil_state(_,_,_), 
+    assert(soil_state(Moisture, Ph, Field)), 
+    write('>>> SOIL received: M='), write(Moisture), write(' pH='), write(Ph), write(' F='), write(Field), nl, !.
+
+read_soilE(Moisture, Ph, Field) :> 
+    soil_state(_,_,_), 
+    retract(soil_state(_,_,_)), 
+    assert(soil_state(Moisture, Ph, Field)), 
+    write('>>> SOIL updated: M='), write(Moisture), write(' pH='), write(Ph), write(' F='), write(Field), nl.
+
+soil_alert(Moisture, Ph, Field) :- 
+    soil_state(Moisture, Ph, Field), 
+    (Moisture < 30 ; Moisture > 80 ; Ph < 5.5 ; Ph > 7.5).
+
+soil_alertI(Moisture, Ph, Field) :> 
+    messageA(crop_advisor, send_message(soil_report(Moisture, Ph, Field), Me)), 
+    retractall(soil_state(_,_,_)).
+
+soil_normal(Moisture, Ph, Field) :- 
+    soil_state(Moisture, Ph, Field), 
+    Moisture >= 30, Moisture =< 80, Ph >= 5.5, Ph =< 7.5.
+
+soil_normalI(Moisture, Ph, Field) :> 
+    write('>>> SOIL NORMAL: M='), write(Moisture), write(' pH='), write(Ph), write(' F='), write(Field), nl,
+    retractall(soil_state(_,_,_)).
+
+logA(X) :> messageA(logger, send_message(X, Me)).
